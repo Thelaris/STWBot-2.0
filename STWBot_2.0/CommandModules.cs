@@ -150,9 +150,9 @@ namespace STWBot_2
 		}
 
 
-		[Command("affix"), Summary("Replies when the next invasions are about to begin")]
+		[Command("affix"), Summary("Shows the Mythic+ Affixes active for the current week")]
 		[Alias("affixes")]
-		public async Task Affix()
+		public async Task Affixes()
 		{
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
@@ -181,6 +181,46 @@ namespace STWBot_2
 			Console.WriteLine(mythicAffixes[2] + " " + affixNumbers[2]);
 
 			msg = "This week's Mythic+ Dungeon Affixes are:\n\n**" + mythicAffixes[0] + "** - Mythic Keystone Level 4+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[0] + ">\n\n**" + mythicAffixes[1] + "** - Mythic Keystone Level 7+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[1] + ">\n\n**" + mythicAffixes[2] + "** - Mythic Keystone Level 10+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[2] + ">";
+			await Context.Channel.SendMessageAsync(msg);
+		}
+
+		[Command("emissaries"), Summary("Shows which emissaries are available for completion")]
+		[Alias("emissary")]
+		public async Task Emissaries()
+		{
+			Utilities util = new Utilities();
+			util.DownloadNewWowHead();
+			string[] emissaries = { util.GetLine("\"US--1\"", "test.txt"), util.GetLine("\"US--2\"", "test.txt"), util.GetLine("\"US--3\"", "test.txt") };
+			string[] timeLeft = { util.GetLine("\'US--1\'", "test.txt"), util.GetLine("\'US--2\'", "test.txt"), util.GetLine("\'US--3\'", "test.txt") };
+
+			string msg = "";
+
+			int i = 0;
+
+			foreach (string emissary in emissaries)
+			{
+				string[] words = emissary.Split('>');
+				emissaries[i] = words[1].TrimEnd('<', '/', 'a');
+				i++;
+			}
+
+			int j = 0;
+
+			foreach (string time in timeLeft)
+			{
+				string[] numbers = time.Split(',');
+				timeLeft[j] = numbers[1].TrimStart('"', ' ').TrimEnd('"').Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
+				j++;
+			}
+
+			Console.WriteLine(emissaries[0]);
+			Console.WriteLine(timeLeft[0]);
+			Console.WriteLine(emissaries[1]);
+			Console.WriteLine(timeLeft[1]);
+			Console.WriteLine(emissaries[2]);
+			Console.WriteLine(timeLeft[2]);
+
+			msg = "Current active emissaries are:\n\n**" + emissaries[0] + "** - __" + timeLeft[0] + "__ remaining to complete\n\n**" + emissaries[1] + "** - __" + timeLeft[1] + "__ remaining to complete\n\n**" + emissaries[2] + "** - __" + timeLeft[2] + "__ remaining to complete";
 			await Context.Channel.SendMessageAsync(msg);
 		}
 	}
