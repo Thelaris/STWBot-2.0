@@ -1,16 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Reflection;
-using System.Net;
-using System.IO;
-using System.Linq;
 using Discord;
 using Discord.WebSocket;
 using Discord.Net.Providers.WS4Net;
 using Discord.Commands;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 
 namespace STWBot_2
 {
