@@ -24,6 +24,8 @@ namespace STWBot_2
 			string[] textLines = File.ReadAllLines(file);
 			List<string> results = new List<string>();
 
+			int i = 0;
+
 			foreach (string line in textLines)
 			{
 				if (line.Contains(keyword))
@@ -44,6 +46,47 @@ namespace STWBot_2
 			return "No results found...";
 
 		}
+
+		public string GetLineAfterNum(string keyword, string file, int linesAfter)
+		{
+			string[] textLines = File.ReadAllLines(file);
+			List<string> results = new List<string>();
+
+			int i = 0;
+
+			foreach (string line in textLines)
+			{
+				if (line.Contains(keyword))
+				{
+					results.Add(line);
+					int lineNumber = i;
+					break;
+				}
+
+				i++;
+			}
+
+			return textLines[i + linesAfter];
+		}
+
+		public List<string> ReturnAllLines(string keyword, string file)
+		{
+			string[] textLines = File.ReadAllLines(file);
+			List<string> results = new List<string>();
+
+			int i = 0;
+
+			foreach (string line in textLines)
+			{
+				if (line.Contains(keyword))
+				{
+					results.Add(line);
+				}
+			}
+
+			return results;
+		}
+
 
 		public void DownloadNewWowHead()
 		{
