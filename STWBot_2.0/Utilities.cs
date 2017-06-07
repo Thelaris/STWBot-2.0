@@ -94,5 +94,12 @@ namespace STWBot_2
 			string htmlCode = webClient.DownloadString("http://wowhead.com");
 			System.IO.File.WriteAllText(@"test.txt", htmlCode);
 		}
+
+		public void DownloadNewMageTower()
+		{
+			WebClient webClient = new WebClient();
+			string htmlCode = webClient.DownloadString("https://data.magetower.info");
+			System.IO.File.WriteAllText(@"magetower.txt", htmlCode);
+		}
 	}
 }

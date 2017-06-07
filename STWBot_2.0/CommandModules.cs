@@ -40,13 +40,103 @@ namespace STWBot_2
 
 	public class Wow : ModuleBase
 	{
+
 		[Command("invasion"), Summary("Replies when the next invasions are about to begin")]
 		[Alias("invasions")]
 		public async Task Invasion()
 		{
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
-			string legionAssaultsLine = util.GetLine("<script>$WH.news.addInvasionDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
+			string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
+			string msg = "";
+
+			Console.WriteLine(legionAssaultsLine);
+
+			string[] words = legionAssaultsLine.Split(':');
+
+			string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
+			int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});</script></div>", ""));
+			string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
+
+			Console.WriteLine(length);
+
+			List<long> upcomingTimesEpoch = new List<long>();
+
+			int i = 0;
+
+			foreach (string time in upcomingAssaultsStr)
+			{
+				upcomingTimesEpoch.Add(Convert.ToInt64(time));
+				Console.WriteLine(time);
+			}
+
+			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+			Console.WriteLine(length);
+
+			int doOnce = 0;
+
+			foreach (long epochTime in upcomingTimesEpoch)
+			{
+				long tempEpochTime = epochTime + (length);
+
+				if (epochTimeNow < tempEpochTime)
+				{
+					if (epochTimeNow > epochTime)
+					{
+						long epochTimeLeft = (tempEpochTime - epochTimeNow);
+						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+						string hoursLeft = t.ToString(@"hh");
+						string minutesLeft = t.ToString(@"mm").TrimStart('0');
+						if (hoursLeft != "00")
+						{
+							hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+						}
+						else
+						{
+							hoursLeft = "";
+						}
+						string zone = "";
+						if (zoneName != "")
+						{
+							zone = zoneName;
+						}
+						else
+						{
+							zone = "A zone";
+						}
+
+						msg = "__**" + zone + "**__** is currently being assaulted by the Legion!**__**\n" + hoursLeft + minutesLeft + " minutes**__** remaining...**\n";
+						Console.WriteLine(zone + " is being assaulted by the legion! " + hoursLeft + " hours and " + minutesLeft + " minutes remaining...");
+					}
+					else
+					{
+						while (doOnce < 1)
+						{
+							msg += "\n\nThe next invasion times are as follows: \n";
+							doOnce++;
+						}
+
+						msg += "\n" + util.ConvertUnixEpochTime(epochTime).ToString() + "\n";
+						Console.WriteLine(util.ConvertUnixEpochTime(epochTime));
+					}
+				}
+			}
+
+			await Context.Channel.SendMessageAsync(msg);
+
+
+
+		}
+
+		/* Obsolete - WoWHead Website Changed
+		[Command("invasion"), Summary("Replies when the next invasions are about to begin")]
+		[Alias("invasions")]
+		public async Task Invasion()
+		{
+			Utilities util = new Utilities();
+			util.DownloadNewWowHead();
+			string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
 			string msg = "";
 
 			char[] charArray = legionAssaultsLine.ToCharArray();
@@ -76,12 +166,12 @@ namespace STWBot_2
 
 			//string name = words[2].Remove(0, 7);
 			//string url = words[3];
-			string zoneName = words[5].Remove(0, 11).Trim('"');
-			long[] upcomingTimesEpoch = { Convert.ToInt64(words[6].Remove(0, 12)), Convert.ToInt64(words[7]), Convert.ToInt64(words[8]), Convert.ToInt64(words[9]), Convert.ToInt64(words[10].Trim(']')) };
+			string zoneName = words[6].Remove(0, 11).Trim('"');
+			long[] upcomingTimesEpoch = { Convert.ToInt64(words[8].Remove(0, 12)), Convert.ToInt64(words[8]), Convert.ToInt64(words[9]), Convert.ToInt64(words[10]), Convert.ToInt64(words[11].Trim(']')) };
 
 			//char[] trimChars = { '}', ')', ';', '<', '/', 's', 'c', 'r', 'i', 'p', 't' };
 
-			int length = Convert.ToInt32(words[11].Remove(0, 9).Remove(5, 12));
+			int length = Convert.ToInt32(words[13].Remove(0, 9).Remove(5, 12));
 			//string cleanLength = length.TrimEnd(trimChars);
 
 			//Console.WriteLine(upcomingTimesEpoch[4]);
@@ -140,15 +230,9 @@ namespace STWBot_2
 				//Console.WriteLine(epochTime);
 			}
 
-			//System.IO.File.WriteAllText(@"test.txt", htmlCode);
-
-			//Console.WriteLine(htmlCode);
-			/* Need updated chromium/chromedriver.exe
-			 * IWebDriver driver = new ChromeDriver(@"C:\Users\Kurt\AppData\Local\Google\Chrome SxS\Application");
-			driver.Navigate().GoToUrl("https://wowhead.com");
-			*/
 			await Context.Channel.SendMessageAsync(msg);
 		}
+	*/
 
 
 		[Command("affix"), Summary("Shows the Mythic+ Affixes active for the current week")]
@@ -157,31 +241,45 @@ namespace STWBot_2
 		{
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
-			string[] mythicAffixes = { util.GetLine("id=\"US-mythicaffix-1\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-2\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-3\"", "test.txt").TrimStart() };
+			List<string> mythicAffixesList = util.ReturnAllLines("US-mythicaffix-", "test.txt");
+			string[] mythicAffixes = mythicAffixesList.ToArray();
+			//string[] mythicAffixes = { util.GetLine("id=\"US-mythicaffix-1\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-2\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-3\"", "test.txt").TrimStart() };
 			int[] affixNumbers = { 0, 0, 0 };
-			string msg = "";
+			string msg = "This week's Mythic+ Dungeon Affixes are:\n\n";
+			Console.WriteLine(mythicAffixes[1]);
 
 			int i = 0;
+			int j = 1;
 
 			foreach (string affix in mythicAffixes)
 			{
-				string[] words = affix.Split(' ');
-				string[] cleanedWords = words[6].Split('<');
+				string[] words = affix.Split('>');
+				//string[] cleanedWords = words[6].Split('<');
 
-				string[] numbers = words[1].Split('=');
-				int cleanedNumber = Convert.ToInt32(numbers[2].TrimEnd('"'));
+				string[] numbers = words[0].Split('=');
+				//int cleanedNumber = Convert.ToInt32(numbers[2].TrimEnd('"'));
 
 				//Console.WriteLine(mythicAffixes[i]);
-				mythicAffixes[i] = cleanedWords[0];
-				affixNumbers[i] = cleanedNumber;
+				mythicAffixes[i] = words[2].Replace(" ", "").Replace("</a", "");
+				affixNumbers[i] = Convert.ToInt32(numbers[2].Replace ("\" id", ""));
+
+				//Console.WriteLine(mythicAffixes[i]);
+				//Console.WriteLine(affixNumbers[i]);
+
+				j += 3;
+
+				msg += "**" + mythicAffixes[i] + "** - Mythic Keystone Level " + j + "+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[i] + ">\n\n";
+
 				i++;
 			}
 
+
+
 			Console.WriteLine(mythicAffixes[0] + " " + affixNumbers[0]);
 			Console.WriteLine(mythicAffixes[1] + " " + affixNumbers[1]);
-			Console.WriteLine(mythicAffixes[2] + " " + affixNumbers[2]);
+			//Console.WriteLine(mythicAffixes[2] + " " + affixNumbers[2]);
 
-			msg = "This week's Mythic+ Dungeon Affixes are:\n\n**" + mythicAffixes[0] + "** - Mythic Keystone Level 4+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[0] + ">\n\n**" + mythicAffixes[1] + "** - Mythic Keystone Level 7+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[1] + ">\n\n**" + mythicAffixes[2] + "** - Mythic Keystone Level 10+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[2] + ">";
+			//msg = "This week's Mythic+ Dungeon Affixes are:\n\n**" + mythicAffixes[0] + "** - Mythic Keystone Level 4+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[0] + ">\n\n**" + mythicAffixes[1]; //+ "** - Mythic Keystone Level 7+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[1] + ">\n\n**" + mythicAffixes[2] + "** - Mythic Keystone Level 10+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[2] + ">";
 			await Context.Channel.SendMessageAsync(msg);
 		}
 
@@ -191,33 +289,51 @@ namespace STWBot_2
 		{
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
-			string[] emissaries = { util.GetLine("\"US--1\"", "test.txt"), util.GetLine("\"US--2\"", "test.txt"), util.GetLine("\"US--3\"", "test.txt") };
-			string[] timeLeft = { util.GetLine("\'US--1\'", "test.txt"), util.GetLine("\'US--2\'", "test.txt"), util.GetLine("\'US--3\'", "test.txt") };
-
-			string msg = "";
-
-			int i = 0;
-
-			foreach (string emissary in emissaries)
+			//string[] emissaries = { util.GetLine("\"US--1\"", "test.txt"), util.GetLine("\"US--2\"", "test.txt"), util.GetLine("\"US--3\"", "test.txt") };
+			List<string> emissariesList = new List<string>();
+			List<string> timeLeftList = new List<string>();
+			List<string> emissariesAndTimesList = util.ReturnAllLines("US-emissary", "test.txt");
+			int i = 1;
+			foreach (string record in emissariesAndTimesList)
 			{
-				if (emissary != "No results found...")
+				if (i % 2 != 0)
 				{
-					string[] words = emissary.Split('>');
-					emissaries[i] = words[1].TrimEnd('<', '/', 'a');
-					i++;
+					emissariesList.Add(record);
 				}
+				else
+				{
+					timeLeftList.Add(record);
+				}
+
+				i++;
 			}
+			//string[] timeLeft = { util.GetLine("\'US--1\'", "test.txt"), util.GetLine("\'US--2\'", "test.txt"), util.GetLine("\'US--3\'", "test.txt") };
+
+			string[] emissaries = emissariesList.ToArray();
+			string[] timeLeft = timeLeftList.ToArray();
+
+			string msg = "Current active emissaries are:\n\n";
 
 			int j = 0;
 
+			foreach (string emissary in emissaries)
+			{
+				string[] words = emissary.Split('>');
+				emissaries[j] = words[1].TrimEnd('<', '/', 'a');
+
+
+				j++;
+			}
+
+			int k = 0;
+
 			foreach (string time in timeLeft)
 			{
-				if (time != "No results found...")
-				{
-					string[] numbers = time.Split(',');
-					timeLeft[j] = numbers[1].TrimStart('"', ' ').TrimEnd('"').Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
-					j++;
-				}
+				string[] numbers = time.Split(',');
+				timeLeft[k] = numbers[1].TrimStart('"', ' ').TrimEnd('"').Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
+
+				msg += "**" + emissaries[k] + "** - __" + timeLeft[k] + "__ remaining to complete\n\n";
+				k++;
 			}
 
 			Console.WriteLine(emissaries[0]);
@@ -227,7 +343,7 @@ namespace STWBot_2
 			Console.WriteLine(emissaries[2]);
 			Console.WriteLine(timeLeft[2]);
 
-			msg = "Current active emissaries are:\n\n**" + emissaries[0] + "** - __" + timeLeft[0] + "__ remaining to complete\n\n**" + emissaries[1] + "** - __" + timeLeft[1] + "__ remaining to complete\n\n**" + emissaries[2] + "** - __" + timeLeft[2] + "__ remaining to complete";
+			//msg = "Current active emissaries are:\n\n**" + emissaries[0] + "** - __" + timeLeft[0] + "__ remaining to complete\n\n**" + emissaries[1] + "** - __" + timeLeft[1] + "__ remaining to complete\n\n**" + emissaries[2] + "** - __" + timeLeft[2] + "__ remaining to complete";
 			await Context.Channel.SendMessageAsync(msg);
 		}
 
@@ -238,8 +354,11 @@ namespace STWBot_2
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
 
-			string[] buildings = { util.GetLineAfterNum("Mage Tower", "test.txt", 8), util.GetLineAfterNum("Command Center", "test.txt", 8), util.GetLineAfterNum("Nether Disruptor", "test.txt", 8) };
-			string[] buildingStates = { util.GetLineAfterNum("Mage Tower", "test.txt", 6), util.GetLineAfterNum("Command Center", "test.txt", 6), util.GetLineAfterNum("Nether Disruptor", "test.txt", 6) };
+			string[] buildings = { util.GetLineAfterNum("Mage Tower", "test.txt", 12), util.GetLineAfterNum("Command Center", "test.txt", 12), util.GetLineAfterNum("Nether Disruptor", "test.txt", 12) };
+			string[] buildingStates = { util.GetLineAfterNum("Mage Tower", "test.txt", 10), util.GetLineAfterNum("Command Center", "test.txt", 10), util.GetLineAfterNum("Nether Disruptor", "test.txt", 10) };
+
+			Console.WriteLine(buildings[0]);
+			Console.WriteLine(buildingStates[0]);
 
 			string msg = "";
 
@@ -261,7 +380,7 @@ namespace STWBot_2
 			foreach (string buildingState in buildingStates)
 			{
 				string[] words = buildingState.Split('>');
-				buildingStates[j] = words[1].Replace("</div", "");
+				buildingStates[j] = words[2].Replace("</div", "");
 				j++;
 			}
 
@@ -275,6 +394,7 @@ namespace STWBot_2
 			msg = "Current Broken Shore buildings stats are as follows: \n\n__**Mage Tower**__\n" + buildingStates[0] + "\n" + buildings[0] + "\n\n__**Command Center**__\n" + buildingStates[1] + "\n" + buildings[1] + "\n\n__**Nether Disruptor**__\n" + buildingStates[2] + "\n" + buildings[2];
 
 			await Context.Channel.SendMessageAsync(msg);
+
 		}
 
 		[Command("menagerie"), Summary("Shows the % for buildings on the Broken Shore!")]
@@ -284,30 +404,35 @@ namespace STWBot_2
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
 
-			string[] pets = { util.GetLine("US-menagerie-1", "test.txt"), util.GetLine("US-menagerie-2", "test.txt"), util.GetLine("US-menagerie-3", "test.txt") };
+			List<string> petsList = util.ReturnAllLines("US-menagerie-", "test.txt");
 
-			string msg = "";
+			//string[] pets = { util.GetLine("US-menagerie-1", "test.txt"), util.GetLine("US-menagerie-2", "test.txt"), util.GetLine("US-menagerie-3", "test.txt") };
+
+			string[] pets = petsList.ToArray();
+
+			string msg = "Pets currently active in your Garrison's Managerie this week are:\n\n";
 
 			int i = 0;
 
 			foreach (string pet in pets)
 			{
-				if (pet != "No results found...")
-				{
-					string[] words = pet.Split('>');
-					pets[i] = words[2].TrimStart(' ').Replace("</a", "");
-				}
+				string[] words = pet.Split('>');
+				pets[i] = words[2].TrimStart(' ').Replace("</a", "");
+
+				msg += "**" + pets[i] + "**\n\n";
+
 				i++;
 			}
 
 			//Console.WriteLine(pets[0]);
 
-			msg = "Pets currently active in your Garrison's Managerie this week are:\n\n**" + pets[0] + "**\n\n**" + pets[1] + "**\n\n**" + pets[2] + "**";
+			//msg = "Pets currently active in your Garrison's Managerie this week are:\n\n**" + pets[0] + "**\n\n**" + pets[1] + "**\n\n**" + pets[2] + "**";
 
 			await Context.Channel.SendMessageAsync(msg);
 		}
 
-		[Command("violethold"), Summary("Shows the % for buildings on the Broken Shore!")]
+		/* removed from WoWHead front page
+	 	[Command("violethold"), Summary("Shows the % for buildings on the Broken Shore!")]
 		[Alias("vhbosses")]
 		public async Task VioletHoldBosses()
 		{
@@ -332,6 +457,7 @@ namespace STWBot_2
 
 			await Context.Channel.SendMessageAsync(msg);
 		}
+		*/
 
 		[Command("dailyreset"), Summary("Shows the % for buildings on the Broken Shore!")]
 		[Alias("dailyquestreset")]
@@ -382,10 +508,10 @@ namespace STWBot_2
 
 			string msg = "";
 
-			string tokenGold = util.GetLineAfterNum("tiw-timer-US", "test.txt", 2);
+			string tokenGold = util.GetLine("tiw-group-wowtoken", "test.txt");
 
 			string[] words = tokenGold.Split('>');
-			tokenGold = words[2].Replace("</span", "");
+			tokenGold = words[15].Replace("</span", "");
 
 			//Console.WriteLine(tokenGold);
 
@@ -470,12 +596,12 @@ namespace STWBot_2
 			foreach (string item in xuriosArray)
 			{
 				string[] words = item.Split('>');
-				xuriosArray[i] = words[3].TrimStart(' ').Replace("</a", "");
+				xuriosArray[i] = words[2].TrimStart(' ').Replace("</a", "");
 				msg += "**" + xuriosArray[i] + "**\n\n";
 				i++;
 			}
 
-			msg.TrimEnd('\n');
+			//msg.TrimEnd('\n');
 
 			await Context.Channel.SendMessageAsync(msg);
 		}
