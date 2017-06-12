@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Timers;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Data.SQLite;
 using Discord.Commands;
 
 namespace STWBot_2
@@ -40,6 +42,8 @@ namespace STWBot_2
 
 	public class Wow : ModuleBase
 	{
+		SQLiteConnection m_dbConnection;
+
 
 		[Command("invasion"), Summary("Replies when the next invasions are about to begin")]
 		[Alias("invasions")]
@@ -316,23 +320,23 @@ namespace STWBot_2
 
 			int j = 0;
 
-			foreach (string emissary in emissaries)
+			foreach (string time in timeLeft)
 			{
-				string[] words = emissary.Split('>');
-				emissaries[j] = words[1].TrimEnd('<', '/', 'a');
-
+				string[] numbers = time.Split(',');
+				timeLeft[j] = numbers[1].TrimStart('"', ' ').TrimEnd('"').Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
 
 				j++;
 			}
 
 			int k = 0;
 
-			foreach (string time in timeLeft)
+			foreach (string emissary in emissaries)
 			{
-				string[] numbers = time.Split(',');
-				timeLeft[k] = numbers[1].TrimStart('"', ' ').TrimEnd('"').Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
+				string[] words = emissary.Split('>');
+				emissaries[k] = words[1].TrimEnd('<', '/', 'a');
 
 				msg += "**" + emissaries[k] + "** - __" + timeLeft[k] + "__ remaining to complete\n\n";
+
 				k++;
 			}
 
@@ -354,11 +358,18 @@ namespace STWBot_2
 			Utilities util = new Utilities();
 			util.DownloadNewWowHead();
 
-			string[] buildings = { util.GetLineAfterNum("Mage Tower", "test.txt", 12), util.GetLineAfterNum("Command Center", "test.txt", 12), util.GetLineAfterNum("Nether Disruptor", "test.txt", 12) };
-			string[] buildingStates = { util.GetLineAfterNum("Mage Tower", "test.txt", 10), util.GetLineAfterNum("Command Center", "test.txt", 10), util.GetLineAfterNum("Nether Disruptor", "test.txt", 10) };
+			//string[] buildings = { util.GetLineAfterNum("data-region=\"US\" data-building=\"1\"", "test.txt", 10), util.GetLineAfterNum("data-region=\"US\" data-building=\"2\"", "test.txt", 10), util.GetLineAfterNum("data-region=\"US\" data-building=\"3\"", "test.txt", 10) };
+			//string[] buildingStates = { util.GetLineAfterNum("data-region=\"US\" data-building=\"1\"", "test.txt", 8), util.GetLineAfterNum("data-region=\"US\" data-building=\"2\"", "test.txt", 8), util.GetLineAfterNum("data-region=\"US\" data-building=\"3\"", "test.txt", 8) };
 
-			Console.WriteLine(buildings[0]);
-			Console.WriteLine(buildingStates[0]);
+			string[] buildings = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-progress",  "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-progress", "test.txt") };
+			string[] buildingStates = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-state", "test.txt") };
+
+			//Console.WriteLine(buildings[0]);
+			//Console.WriteLine(buildingStates[0]);
+			//Console.WriteLine(buildings[1]);
+			//Console.WriteLine(buildingStates[1]);
+			//Console.WriteLine(buildings[2]);
+			//Console.WriteLine(buildingStates[2]);
 
 			string msg = "";
 
@@ -384,13 +395,14 @@ namespace STWBot_2
 				j++;
 			}
 
+			/*
 			Console.WriteLine(buildings[0]);
 			Console.WriteLine(buildingStates[0]);
 			Console.WriteLine(buildings[1]);
 			Console.WriteLine(buildingStates[1]);
 			Console.WriteLine(buildings[2]);
 			Console.WriteLine(buildingStates[2]);
-
+			*/
 			msg = "Current Broken Shore buildings stats are as follows: \n\n__**Mage Tower**__\n" + buildingStates[0] + "\n" + buildings[0] + "\n\n__**Command Center**__\n" + buildingStates[1] + "\n" + buildings[1] + "\n\n__**Nether Disruptor**__\n" + buildingStates[2] + "\n" + buildings[2];
 
 			await Context.Channel.SendMessageAsync(msg);
@@ -431,7 +443,6 @@ namespace STWBot_2
 			await Context.Channel.SendMessageAsync(msg);
 		}
 
-		/* removed from WoWHead front page
 	 	[Command("violethold"), Summary("Shows the % for buildings on the Broken Shore!")]
 		[Alias("vhbosses")]
 		public async Task VioletHoldBosses()
@@ -457,7 +468,6 @@ namespace STWBot_2
 
 			await Context.Channel.SendMessageAsync(msg);
 		}
-		*/
 
 		[Command("dailyreset"), Summary("Shows the % for buildings on the Broken Shore!")]
 		[Alias("dailyquestreset")]
@@ -510,8 +520,10 @@ namespace STWBot_2
 
 			string tokenGold = util.GetLine("tiw-group-wowtoken", "test.txt");
 
+			Console.WriteLine(tokenGold);
+
 			string[] words = tokenGold.Split('>');
-			tokenGold = words[15].Replace("</span", "");
+			tokenGold = words[9].Replace("</span", "");
 
 			//Console.WriteLine(tokenGold);
 
@@ -597,13 +609,64 @@ namespace STWBot_2
 			{
 				string[] words = item.Split('>');
 				xuriosArray[i] = words[2].TrimStart(' ').Replace("</a", "");
-				msg += "**" + xuriosArray[i] + "**\n\n";
+				if (xuriosArray[i] != "")
+				{
+					msg += "**" + xuriosArray[i] + "**\n\n";
+				}
 				i++;
 			}
 
 			//msg.TrimEnd('\n');
 
 			await Context.Channel.SendMessageAsync(msg);
+
+		}
+
+		[Command("autoalerts"), Summary("Shows the % for buildings on the Broken Shore!")]
+		public async Task StartAutoAlerts()
+		{
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "UPDATE autoalerts SET value = 'true', channelid = '" + Context.Channel.Id + "' WHERE guildid = '" + Context.Guild.Id + "'";
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+             
+		}
+
+		[Command("stopautoalerts"), Summary("Shows the % for buildings on the Broken Shore!")]
+		public async Task StopAutoAlerts()
+		{
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "UPDATE autoalerts SET value = 'false', channelid = '" + Context.Channel.Id + "' WHERE guildid = '" + Context.Guild.Id + "'";
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+
+		}
+
+		void TimerElapsed(object sender, ElapsedEventArgs e)
+		{
+			Context.Channel.SendMessageAsync("This is a test");
+		}
+
+		public async Task Testing()
+		{
+			
+
 		}
 	}
 }
