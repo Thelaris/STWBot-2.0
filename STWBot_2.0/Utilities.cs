@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Linq;
 
 namespace STWBot_2
 {
@@ -85,6 +86,51 @@ namespace STWBot_2
 			}
 
 			return results;
+		}
+
+
+		public string BrokenShoreBuildingGetLine(string firstKeyword, string secondKeyword, string file)
+		{
+			string[] textLines = File.ReadAllLines(file);
+			//List<string> textLines = File.ReadLines(file).ToList();
+			//List<string> results = new List<string>();
+
+			int i = 0;
+			int lineNum = 0;
+
+			foreach (string line in textLines)
+			{
+				if (line.Contains(firstKeyword))
+				{
+					//results.Add(line);
+					lineNum += i;
+					break;
+				}
+
+				i++;
+			}
+
+			string[] remainingLines = File.ReadAllLines(file).Skip(lineNum).ToArray();
+
+			foreach (string line in remainingLines)
+			{
+				if (line.Contains(secondKeyword))
+				{
+					return line;
+				}
+			}
+
+
+			/*
+			foreach (string l in results)
+			{
+				//Console.WriteLine(l);
+				return l;
+			}
+			*/
+			//if (results.Count < 1)
+			return "No results found...";
+
 		}
 
 
