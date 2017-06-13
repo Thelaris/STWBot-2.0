@@ -790,7 +790,7 @@ namespace STWBot_2
 				{
 					if (epochTimeNow > epochTime)
 					{
-						long epochTimeLeft = (tempEpochTime - epochTimeNow);
+						/*long epochTimeLeft = (tempEpochTime - epochTimeNow);
 						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
 						hoursLeft = t.ToString(@"hh");
 						minutesLeft = t.ToString(@"mm").TrimStart('0');
@@ -801,7 +801,7 @@ namespace STWBot_2
 						else
 						{
 							hoursLeft = "";
-						}
+						} */
 						//zone = "";
 						/*
 						if (zoneName != "")
@@ -840,7 +840,7 @@ namespace STWBot_2
 
 			}
 
-			int j = 0;
+			int j = 1;
 
 			foreach (long epochTime in upcomingTimesEpoch)
 			{
@@ -854,25 +854,43 @@ namespace STWBot_2
 						if (zoneName != "")
 						{
 							zone = zoneName;
+
 						}
 						else
 						{
 							zone = "A zone";
+
+						}
+						long epochTimeLeft = (tempEpochTime - epochTimeNow);
+						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+						hoursLeft = t.ToString(@"hh");
+						minutesLeft = t.ToString(@"mm").TrimStart('0');
+						if (hoursLeft != "00")
+						{
+							hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+						}
+						else
+						{
+							hoursLeft = "";
 						}
 
-						break;
 					}
 
-					goto NextEpochTime;
+					//goto NextEpochTime;
 				}
-				if (j < upcomingTimesEpoch.Count)
+				if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
 				{
-					sql = "UPDATE legionassaults SET zonename = '" + zone.Replace("'", "''") + "'";
+					
+					Console.WriteLine(zone);
+					Console.WriteLine(j);
+					sql = "UPDATE legionassaults SET zonename = '" + zone.Replace("'", "''") + "', timeleft = '" + hoursLeft + minutesLeft + "' WHERE id = " + j;
 					command = new SQLiteCommand(sql, m_dbConnection);
 					command.ExecuteNonQuery();
+
 				}
 
-			NextEpochTime:
+				//goto NextEpochTime;
+			//NextEpochTime:
 				j++;
 			}
 			//await Context.Channel.SendMessageAsync(msg);
