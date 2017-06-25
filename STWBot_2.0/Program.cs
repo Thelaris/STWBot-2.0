@@ -26,6 +26,8 @@ namespace STWBot_2
 		//private Discord map;
 		public IServiceProvider map;
 
+		string notFound = "No results found...";
+
 		public static void Main(string[] args) => new MainClass().MainAsync().GetAwaiter().GetResult();
 
 		public async Task MainAsync()
@@ -38,6 +40,8 @@ namespace STWBot_2
 			commands = new CommandService();
 
 			map = null;
+
+			util.DownloadNewWowHead();
 
 			await InstallCommands();
 			await ConnectToDB();
@@ -60,6 +64,7 @@ namespace STWBot_2
 			client.JoinedGuild += JoinedNewGuild;
 			client.LeftGuild += LeftGuild;
 			//client.MessageReceived += MessageReceived;
+			//client.UserJoined += UserJoined;
 
 			await client.LoginAsync(TokenType.Bot, tokenRef.token);
 			await client.StartAsync();
@@ -203,6 +208,7 @@ namespace STWBot_2
 
 			foreach (string emissary in emissaries)
 			{
+				Console.WriteLine(emissary);
 				string[] words = emissary.Split('>');
 				emissaries[j] = words[1].TrimEnd('<', '/', 'a');
 
@@ -243,16 +249,21 @@ namespace STWBot_2
 				k++;
 			}
 
-			m_dbConnection.Close();
-
 			int l = 0;
 
-			if (dbEmissariesList != emissariesList)
+			foreach (string emissary in dbEmissariesList)
 			{
-				
+				if (emissary != emissaries[l])
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('emissaries')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				l++;
 			}
 
-
+			m_dbConnection.Close();
 		}
 
 
@@ -264,6 +275,30 @@ namespace STWBot_2
 		}
 
 
+
+		private Task UserJoined(SocketGuildUser user)
+		{
+			IRole membersRole = client.GetGuild(303997236482801670).GetRole(305921894513770499);
+			IRole pugsRole = client.GetGuild(303997236482801670).GetRole(306107573277425664);
+
+			Console.WriteLine(user.Id);
+
+			//SocketUser newUser = client.GetUser(user.Id).;
+			//client.GetGuild().GetVoiceChannel().Users.
+
+			//if (newUser..VoiceChannel.Id == client.GetChannel(306107185145053194).Id)
+			//{
+				Console.WriteLine("PUG!");
+				user.AddRoleAsync(pugsRole);
+			//}
+			//else
+			//{
+				Console.WriteLine("MEMBER!");
+				user.AddRoleAsync(membersRole);
+			//}
+
+			return Task.FromResult(true);
+		}
 
 		private Task Log(LogMessage msg)
 		{
@@ -305,38 +340,61 @@ namespace STWBot_2
 
 		public async void TimerElapsed(object sender, ElapsedEventArgs e)
 		{
-			Console.WriteLine("FIRED!");
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			sql = "SELECT value, guildid, channelid FROM autoalerts WHERE value = 'true'";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			if (client.ConnectionState == ConnectionState.Connected)
 			{
-				Console.WriteLine("READ!");
-				await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync("This is a test");
+				Console.WriteLine("FIRED!");
+				m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+				m_dbConnection.Open();
+
+				string sql;
+				SQLiteCommand command;
+
+				List<string> tablenames = new List<string>();
+
+				m_dbConnection.Close();
+
+				await CheckWowhead();
+
+				await CheckBrokenShoreBuildings();
+				await CheckInvasions();
+				await CheckEmissaries();
+				await CheckMenagerie();
+				await CheckAffixes();
+				await CheckVHBosses();
+				await CheckWorldBosses();
+				await CheckWorldEvents();
+				await CheckXurios();
+				await CheckDailyReset();
+				await CheckWowToken();
+
+
+				sql = "SELECT tablename FROM tablestoalert";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader readtablenames = command.ExecuteReader();
+
+				while (readtablenames.Read())
+				{
+					tablenames.Add(readtablenames["tablename"].ToString());
+					//Console.WriteLine(readtablenames["tablename"]);
+				}
+
+				sql = "SELECT value, guildid, channelid FROM autoalerts WHERE value = 'true'";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader reader = command.ExecuteReader();
+
+				while (reader.Read())
+				{
+					Console.WriteLine("READ!");
+					foreach (string table in tablenames)
+					{
+						await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync("There was a change in " + table);
+					}
+				}
+
+				sql = "DELETE FROM tablestoalert";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				command.ExecuteNonQuery();
 			}
-
-			m_dbConnection.Close();
-
-			await CheckWowhead();
-
-			await CheckBrokenShoreBuildings();
-			await CheckInvasions();
-			await CheckEmissaries();
-			await CheckMenagerie();
-			await CheckAffixes();
-			await CheckVHBosses();
-			await CheckWorldBosses();
-			await CheckWorldEvents();
-			await CheckXurios();
-			await CheckDailyReset();
-			await CheckWowToken();
 		}
 
 
@@ -350,6 +408,18 @@ namespace STWBot_2
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbPetNameList = new List<string>();
+
+			sql = "SELECT petname FROM menagerie";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbPetNameList.Add(reader["petname"].ToString());
+			}
 
 			List<string> petsList = util.ReturnAllLines("US-menagerie-", "test.txt");
 
@@ -379,7 +449,23 @@ namespace STWBot_2
 
 				msg += "**" + pets[i] + "**\n\n";
 
+
+
 				i++;
+			}
+
+			int j = 0;
+
+			foreach (string petname in dbPetNameList)
+			{
+				if (petname != pets[j])
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('menagerie')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				j++;
 			}
 
 			m_dbConnection.Close();
@@ -400,7 +486,19 @@ namespace STWBot_2
 			string sql;
 			SQLiteCommand command;
 
-			string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") };
+			List<string> dbVhBossesList = new List<string>();
+
+			sql = "SELECT bossname FROM vhbosses";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbVhBossesList.Add(reader["bossname"].ToString());
+			}
+
+			string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") }; //need to update to find all!
 
 			Console.WriteLine(DateTime.Now + " - Updating Violet Hold Bosses...");
 
@@ -412,19 +510,36 @@ namespace STWBot_2
 
 			foreach (string boss in vhBosses)
 			{
-				string[] words = boss.Split('>');
-				vhBosses[i] = words[1].Replace("</a", "");
+				if (boss != "No results found...")
+				{
+					string[] words = boss.Split('>');
+					vhBosses[i] = words[1].Replace("</a", "");
 
-				sql = "INSERT INTO vhbosses (bossname) VALUES ('" + vhBosses[i].Replace("'", "''") + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
+					sql = "INSERT INTO vhbosses (bossname) VALUES ('" + vhBosses[i].Replace("'", "''") + "')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
 
-				i++;
+					i++;
+				}
 			}
 
 			//msg = "Current bosses active in the Violet Hold this week are:\n\n**" + vhBosses[0] + "**\n\n**" + vhBosses[1] + "**\n\n**" + vhBosses[2] + "**";
 
 			//await Context.Channel.SendMessageAsync(msg);
+
+			int j = 0;
+
+			foreach (string boss in dbVhBossesList)
+			{
+				if (boss != vhBosses[j])
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('vhbosses')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				j++;
+			}
 
 			m_dbConnection.Close();
 		}
@@ -441,6 +556,18 @@ namespace STWBot_2
 			string sql;
 			SQLiteCommand command;
 
+			List<string> dbDailyResetList = new List<string>();
+
+			sql = "SELECT time FROM dailyreset";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbDailyResetList.Add(reader["time"].ToString());
+			}
+
 			string msg = "";
 
 			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -452,8 +579,10 @@ namespace STWBot_2
 			command.ExecuteNonQuery();
 
 			string dailyReset = util.GetLine("tiw-timer-US", "test.txt");
+			//Console.WriteLine(dailyReset);
 			string[] words = dailyReset.Split('"');
 			dailyReset = words[5];
+			string dailyResetEpochTime = dailyReset;
 
 			sql = "INSERT INTO dailyreset (time) VALUES ('" + dailyReset + "')";
 			command = new SQLiteCommand(sql, m_dbConnection);
@@ -461,7 +590,7 @@ namespace STWBot_2
 
 			sql = "SELECT time FROM dailyreset";
 			command = new SQLiteCommand(sql, m_dbConnection);
-			SQLiteDataReader reader = command.ExecuteReader();
+			reader = command.ExecuteReader();
 
 			long epochTimeLeft = 0;
 
@@ -493,6 +622,13 @@ namespace STWBot_2
 			//Console.WriteLine(timeNow);
 
 			msg = "There is **" + hoursLeft + minutesLeft + " minutes** remaining until dailies are reset.\n\n Dailies reset at **" + dailyReset + "**.";
+
+			if (dbDailyResetList[0] != dailyResetEpochTime)
+			{
+				sql = "INSERT INTO tablestoalert (tablename) VALUES ('dailyreset')";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				command.ExecuteNonQuery();
+			}
 
 			//await Context.Channel.SendMessageAsync(msg);
 		}
@@ -956,6 +1092,8 @@ namespace STWBot_2
 				}
 
 				string[] words = building.Split('>');
+
+				Console.WriteLine(buildings[i]);
 				buildings[i] = words[4].Replace("</span", "");
 
 				sql = "INSERT INTO brokenshorebuildings (buildingname, buildingpercentage) VALUES ('" + buildingName + "', '" + buildings[i] + "')";
