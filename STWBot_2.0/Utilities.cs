@@ -137,15 +137,18 @@ namespace STWBot_2
 		public void DownloadNewWowHead()
 		{
 			WebClient webClient = new WebClient();
-			string htmlCode = webClient.DownloadString("http://wowhead.com");
+			webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+			string htmlCode = webClient.DownloadString("https://wowhead.com");
 			System.IO.File.WriteAllText(@"test.txt", htmlCode);
 		}
 
 		public void DownloadNewMageTower()
 		{
 			WebClient webClient = new WebClient();
+			webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
 			string htmlCode = webClient.DownloadString("https://data.magetower.info");
 			System.IO.File.WriteAllText(@"magetower.txt", htmlCode);
 		}
+
 	}
 }
