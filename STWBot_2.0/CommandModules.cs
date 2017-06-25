@@ -452,16 +452,19 @@ namespace STWBot_2
 
 			string msg = "";
 
-			string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") };
+			string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") }; //need to update to find all!
 
 			int i = 0;
 
 			foreach (string boss in vhBosses)
 			{
-				string[] words = boss.Split('>');
-				vhBosses[i] = words[1].Replace("</a", "");
+				if (boss != "No results found...")
+				{
+					string[] words = boss.Split('>');
+					vhBosses[i] = words[1].Replace("</a", "");
 
-				i++;
+					i++;
+				}
 			}
 
 			msg = "Current bosses active in the Violet Hold this week are:\n\n**" + vhBosses[0] + "**\n\n**" + vhBosses[1] + "**\n\n**" + vhBosses[2] + "**";
