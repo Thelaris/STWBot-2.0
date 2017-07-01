@@ -422,7 +422,7 @@ namespace STWBot_2
 			}
 
 			List<string> petsList = util.ReturnAllLines("US-menagerie-", "test.txt");
-
+			Console.WriteLine(petsList[0]);
 			//string[] pets = { util.GetLine("US-menagerie-1", "test.txt"), util.GetLine("US-menagerie-2", "test.txt"), util.GetLine("US-menagerie-3", "test.txt") };
 
 			string[] pets = petsList.ToArray();
@@ -440,7 +440,7 @@ namespace STWBot_2
 			foreach (string pet in pets)
 			{
 				string[] words = pet.Split('>');
-				pets[i] = words[2].TrimStart(' ').Replace("</a", "");
+				pets[i] = words[1].TrimStart(' ').Replace("</a", "");
 
 				sql = "INSERT INTO menagerie (petname) VALUES ('" + pets[i].Replace("'", "''") + "')";
 				command = new SQLiteCommand(sql, m_dbConnection);
@@ -882,15 +882,16 @@ namespace STWBot_2
 			string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
 			//string msg = "";
 
-			//Console.WriteLine(legionAssaultsLine);
+			Console.WriteLine(legionAssaultsLine);
 
 			string[] words = legionAssaultsLine.Split(':');
 
-			string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
-			int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});</script></div>", ""));
-			string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
+			string[] upcomingAssaultsStr = words[13].TrimStart('[').Replace("],\"length\"", "").Split(',');
+			int length = Convert.ToInt32(words[14].Replace(" ", "").Replace("});</script></div>", ""));
+			string zoneName = words[12].Replace("\"", "").Replace(",upcoming", "");
 
-			//Console.WriteLine(length);
+			Console.WriteLine(upcomingAssaultsStr[0]);
+			Console.WriteLine(length);
 
 			List<long> upcomingTimesEpoch = new List<long>();
 
