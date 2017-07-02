@@ -49,21 +49,47 @@ namespace STWBot_2
 		[Alias("invasions")]
 		public async Task Invasion()
 		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
-			string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
+			//util.DownloadNewWowHead();
+			//string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
 			string msg = "";
 
-			Console.WriteLine(legionAssaultsLine);
+			//Console.WriteLine(legionAssaultsLine);
 
-			string[] words = legionAssaultsLine.Split(':');
+			//string[] words = legionAssaultsLine.Split(':');
+			List<string> upcomingAssaultsList = new List<string>();
+			//string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
+			//int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});</script></div>", ""));
+			//string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
 
-			string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
-			int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});</script></div>", ""));
-			string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
+
+			sql = "SELECT zonename, assaulttime, length FROM legionassaults";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			int length = 0;
+			string zoneName = "";
+
+			while (reader.Read())
+			{
+				if (reader["zonename"] != null)
+				{
+					zoneName = reader["zonename"].ToString();
+				}
+				upcomingAssaultsList.Add(reader["assaulttime"].ToString());
+				length = Convert.ToInt32(reader["length"]);
+			}
 
 			Console.WriteLine(length);
-
+			string[] upcomingAssaultsStr = upcomingAssaultsList.ToArray();
 			List<long> upcomingTimesEpoch = new List<long>();
 
 			int i = 0;
@@ -101,7 +127,7 @@ namespace STWBot_2
 							hoursLeft = "";
 						}
 						string zone = "";
-						if (zoneName != "")
+						if (zoneName != "" || zoneName != null)
 						{
 							zone = zoneName;
 						}
@@ -244,11 +270,31 @@ namespace STWBot_2
 		public async Task Affixes()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
-			List<string> mythicAffixesList = util.ReturnAllLines("US-mythicaffix-", "test.txt");
+			//util.DownloadNewWowHead();
+			//List<string> mythicAffixesList = util.ReturnAllLines("US-mythicaffix-", "test.txt");
+			List<string> mythicAffixesList = new List<string>();
+			List<string> affixNumberList = new List<string>();
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT affixname, affixnum, dungeonlevel FROM dungeonaffixes";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				mythicAffixesList.Add(reader["affixname"].ToString());
+				affixNumberList.Add(reader["affixnum"].ToString());
+			}
+
 			string[] mythicAffixes = mythicAffixesList.ToArray();
 			//string[] mythicAffixes = { util.GetLine("id=\"US-mythicaffix-1\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-2\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-3\"", "test.txt").TrimStart() };
-			int[] affixNumbers = { 0, 0, 0 };
+			string[] affixNumbers = affixNumberList.ToArray();
 			string msg = "This week's Mythic+ Dungeon Affixes are:\n\n";
 			Console.WriteLine(mythicAffixes[1]);
 
@@ -257,22 +303,22 @@ namespace STWBot_2
 
 			foreach (string affix in mythicAffixes)
 			{
-				string[] words = affix.Split('>');
+				//string[] words = affix.Split('>');
 				//string[] cleanedWords = words[6].Split('<');
 
-				string[] numbers = words[0].Split('=');
+				//string[] numbers = words[0].Split('=');
 				//int cleanedNumber = Convert.ToInt32(numbers[2].TrimEnd('"'));
 
 				//Console.WriteLine(mythicAffixes[i]);
-				mythicAffixes[i] = words[2].Replace(" ", "").Replace("</a", "");
-				affixNumbers[i] = Convert.ToInt32(numbers[2].Replace ("\" id", ""));
+				//mythicAffixes[i] = words[2].Replace(" ", "").Replace("</a", "");
+				//affixNumbers[i] = Convert.ToInt32(numbers[2].Replace ("\" id", ""));
 
 				//Console.WriteLine(mythicAffixes[i]);
 				//Console.WriteLine(affixNumbers[i]);
 
 				j += 3;
 
-				msg += "**" + mythicAffixes[i] + "** - Mythic Keystone Level " + j + "+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[i] + ">\n\n";
+				msg += "**" + affix + "** - Mythic Keystone Level " + j + "+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[i] + ">\n\n";
 
 				i++;
 			}
@@ -292,12 +338,31 @@ namespace STWBot_2
 		public async Task Emissaries()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
+
 			//string[] emissaries = { util.GetLine("\"US--1\"", "test.txt"), util.GetLine("\"US--2\"", "test.txt"), util.GetLine("\"US--3\"", "test.txt") };
 			List<string> emissariesList = new List<string>();
 			List<string> timeLeftList = new List<string>();
-			List<string> emissariesAndTimesList = util.ReturnAllLines("US-emissary", "test.txt");
-			int i = 1;
+			//List<string> emissariesAndTimesList = util.ReturnAllLines("US-emissary", "test.txt");
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT name, timeleft FROM emissaries";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				emissariesList.Add(reader["name"].ToString());
+				timeLeftList.Add(reader["timeleft"].ToString());
+			}
+
+			/*int i = 1;
 			foreach (string record in emissariesAndTimesList)
 			{
 				if (i % 2 != 0)
@@ -310,7 +375,7 @@ namespace STWBot_2
 				}
 
 				i++;
-			}
+			} */
 			//string[] timeLeft = { util.GetLine("\'US--1\'", "test.txt"), util.GetLine("\'US--2\'", "test.txt"), util.GetLine("\'US--3\'", "test.txt") };
 
 			string[] emissaries = emissariesList.ToArray();
@@ -320,6 +385,7 @@ namespace STWBot_2
 
 			int j = 0;
 
+			/*
 			foreach (string time in timeLeft)
 			{
 				string[] numbers = time.Split(',');
@@ -327,13 +393,14 @@ namespace STWBot_2
 
 				j++;
 			}
+			*/
 
 			int k = 0;
 
 			foreach (string emissary in emissaries)
 			{
-				string[] words = emissary.Split('>');
-				emissaries[k] = words[1].TrimEnd('<', '/', 'a');
+				//string[] words = emissary.Split('>');
+				//emissaries[k] = words[1].TrimEnd('<', '/', 'a');
 
 				msg += "**" + emissaries[k] + "** - __" + timeLeft[k] + "__ remaining to complete\n\n";
 
@@ -356,13 +423,35 @@ namespace STWBot_2
 		public async Task BrokenShoreBuildings()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
 			//string[] buildings = { util.GetLineAfterNum("data-region=\"US\" data-building=\"1\"", "test.txt", 10), util.GetLineAfterNum("data-region=\"US\" data-building=\"2\"", "test.txt", 10), util.GetLineAfterNum("data-region=\"US\" data-building=\"3\"", "test.txt", 10) };
 			//string[] buildingStates = { util.GetLineAfterNum("data-region=\"US\" data-building=\"1\"", "test.txt", 8), util.GetLineAfterNum("data-region=\"US\" data-building=\"2\"", "test.txt", 8), util.GetLineAfterNum("data-region=\"US\" data-building=\"3\"", "test.txt", 8) };
 
-			string[] buildings = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-progress",  "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-progress", "test.txt") };
-			string[] buildingStates = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-state", "test.txt") };
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT buildingstate, buildingpercentage FROM brokenshorebuildings";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			List<string> buildingPercentList = new List<string>();
+			List<string> buildingStatesList = new List<string>();
+
+			while (reader.Read())
+			{
+				buildingPercentList.Add(reader["buildingpercentage"].ToString());
+				buildingStatesList.Add(reader["buildingstate"].ToString());
+			}
+			//string[] buildings = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-progress", "test.txt") };
+			//string[] buildingStates = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-state", "test.txt") };
+
+			string[] buildings = buildingPercentList.ToArray();
+			string[] buildingStates = buildingStatesList.ToArray();
 
 			//Console.WriteLine(buildings[0]);
 			//Console.WriteLine(buildingStates[0]);
@@ -376,7 +465,7 @@ namespace STWBot_2
 			//string mageTowerPercentage = util.GetLineAfterNum("Mage Tower", "test.txt", 8);
 			//string commandCenterPercentage = util.GetLineAfterNum("Command Center", "test.txt", 8);
 			//string netherDisruptorPercentage = util.GetLineAfterNum("Nether Disruptor", "test.txt", 8);
-
+			/*
 			int i = 0;
 
 			foreach (string building in buildings)
@@ -394,7 +483,7 @@ namespace STWBot_2
 				buildingStates[j] = words[2].Replace("</div", "");
 				j++;
 			}
-
+			*/
 			/*
 			Console.WriteLine(buildings[0]);
 			Console.WriteLine(buildingStates[0]);
@@ -414,11 +503,29 @@ namespace STWBot_2
 		public async Task MenageriePets()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
-			List<string> petsList = util.ReturnAllLines("US-menagerie-", "test.txt");
+			//List<string> petsList = util.ReturnAllLines("US-menagerie-", "test.txt");
 
 			//string[] pets = { util.GetLine("US-menagerie-1", "test.txt"), util.GetLine("US-menagerie-2", "test.txt"), util.GetLine("US-menagerie-3", "test.txt") };
+
+			List<string> petsList = new List<string>();
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT petname FROM menagerie";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				petsList.Add(reader["petname"].ToString());
+			}
 
 			string[] pets = petsList.ToArray();
 
@@ -428,8 +535,8 @@ namespace STWBot_2
 
 			foreach (string pet in pets)
 			{
-				string[] words = pet.Split('>');
-				pets[i] = words[2].TrimStart(' ').Replace("</a", "");
+				//string[] words = pet.Split('>');
+				//pets[i] = words[2].TrimStart(' ').Replace("</a", "");
 
 				msg += "**" + pets[i] + "**\n\n";
 
@@ -448,26 +555,40 @@ namespace STWBot_2
 		public async Task VioletHoldBosses()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
 			string msg = "";
+			List<string> vhBossesList = new List<string>();
 
-			string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") }; //need to update to find all!
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
 
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT bossname FROM vhbosses";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				vhBossesList.Add(reader["bossname"].ToString());
+			}
+
+			//string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") }; //need to update to find all!
+			string[] vhBosses = vhBossesList.ToArray();
 			int i = 0;
+
+			msg = "Current bosses active in the Violet Hold this week are:";
 
 			foreach (string boss in vhBosses)
 			{
-				if (boss != "No results found...")
-				{
-					string[] words = boss.Split('>');
-					vhBosses[i] = words[1].Replace("</a", "");
-
-					i++;
-				}
+				msg += "\n\n**" + vhBosses[i] + "**";
+				i++;
 			}
 
-			msg = "Current bosses active in the Violet Hold this week are:\n\n**" + vhBosses[0] + "**\n\n**" + vhBosses[1] + "**\n\n**" + vhBosses[2] + "**";
+			 
 
 			await Context.Channel.SendMessageAsync(msg);
 		}
@@ -477,15 +598,31 @@ namespace STWBot_2
 		public async Task DailyQuestReset()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
 			string msg = "";
 
 			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-			string dailyReset = util.GetLine("tiw-timer-US", "test.txt");
-			string[] words = dailyReset.Split('"');
-			dailyReset = words[5];
+			string dailyReset = "";
+			//string[] words = dailyReset.Split('"');
+			//dailyReset = words[5];
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT time, timeleft FROM dailyreset";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dailyReset = reader["time"].ToString();
+			}
 
 			long epochTimeLeft = Convert.ToInt64(dailyReset) - epochTimeNow;
 
@@ -517,16 +654,33 @@ namespace STWBot_2
 		public async Task WoWToken()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
 			string msg = "";
 
-			string tokenGold = util.GetLine("tiw-group-wowtoken", "test.txt");
+			//string tokenGold = util.GetLine("tiw-group-wowtoken", "test.txt");
+			string tokenGold = "";
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT price FROM wowtoken";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				tokenGold = reader["price"].ToString();
+			}
 
 			Console.WriteLine(tokenGold);
 
-			string[] words = tokenGold.Split('>');
-			tokenGold = words[9].Replace("</span", "");
+			//string[] words = tokenGold.Split('>');
+			//tokenGold = words[9].Replace("</span", "");
 
 			//Console.WriteLine(tokenGold);
 
@@ -540,20 +694,38 @@ namespace STWBot_2
 		public async Task WorldBosses()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
 			string msg = "Below are the current World Bosses that are active this week:\n\n";
 
-			List<string> bosses = util.ReturnAllLines("US-epiceliteworld-", "test.txt");
+			//List<string> bossesList = util.ReturnAllLines("US-epiceliteworld-", "test.txt");
 
-			string[] bossesArray = bosses.ToArray();
+			List<string> bossesList = new List<string>();
+
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT bossname FROM worldbosses";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				bossesList.Add(reader["bossname"].ToString());
+			}
+
+			string[] bossesArray = bossesList.ToArray();
 
 			int i = 0;
 
 			foreach (string boss in bossesArray)
 			{
-				string[] words = boss.Split('>');
-				bossesArray[i] = words[1].Replace("</a", "");
+				//string[] words = boss.Split('>');
+				//bossesArray[i] = words[1].Replace("</a", "");
 				msg += "**" + bossesArray[i] + "**\n\n";
 				i++;
 			}
@@ -570,25 +742,42 @@ namespace STWBot_2
 		public async Task WorldEvents()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
 			string msg = "Below are the current World Events that are active this week:\n\n";
 
-			List<string> worldEvents = util.ReturnAllLines("US-holiday-", "test.txt");
+			//List<string> worldEvents = util.ReturnAllLines("US-holiday-", "test.txt");
+			List<string> worldEventsList = new List<string>();
 
-			string[] worldEventsArray = worldEvents.ToArray();
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT eventname FROM worldevents";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				worldEventsList.Add(reader["eventname"].ToString());
+			}
+
+			string[] worldEventsArray = worldEventsList.ToArray();
 
 			int i = 0;
 
 			foreach (string worldEvent in worldEventsArray)
 			{
-				string[] words = worldEvent.Split('>');
-				worldEventsArray[i] = words[2].TrimStart(' ').Replace("</a", "");
-				msg += "**" + worldEventsArray[i] + "**\n\n";
+				//string[] words = worldEvent.Split('>');
+				//worldEventsArray[i] = words[2].TrimStart(' ').Replace("</a", "");
+				msg += "**" + worldEvent + "**\n\n";
 				i++;
 			}
 
-			msg.TrimEnd('\n');
+			//msg.TrimEnd('\n');
 
 			await Context.Channel.SendMessageAsync(msg);
 		}
@@ -598,20 +787,37 @@ namespace STWBot_2
 		public async Task Xurios()
 		{
 			Utilities util = new Utilities();
-			util.DownloadNewWowHead();
+			//util.DownloadNewWowHead();
 
-			string msg = "This week Xur\'ios is selling the following for Curious Coins:\n\n";
+			string msg = "Currently Xur\'ios is selling the following for Curious Coins:\n\n";
 
-			List<string> xurios = util.ReturnAllLines("US-xurios-", "test.txt");
+			//List<string> xurios = util.ReturnAllLines("US-xurios-", "test.txt");
+			List<string> xuriosList = new List<string>();
 
-			string[] xuriosArray = xurios.ToArray();
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "SELECT itemname FROM xurios";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				xuriosList.Add(reader["itemname"].ToString());
+			}
+
+			string[] xuriosArray = xuriosList.ToArray();
 
 			int i = 0;
 
 			foreach (string item in xuriosArray)
 			{
-				string[] words = item.Split('>');
-				xuriosArray[i] = words[2].TrimStart(' ').Replace("</a", "");
+				//string[] words = item.Split('>');
+				//xuriosArray[i] = words[2].TrimStart(' ').Replace("</a", "");
 				if (xuriosArray[i] != "")
 				{
 					msg += "**" + xuriosArray[i] + "**\n\n";
