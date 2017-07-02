@@ -253,7 +253,7 @@ namespace STWBot_2
 
 			foreach (string emissary in dbEmissariesList)
 			{
-				if (emissary != emissaries[l])
+				if (emissary != emissaries[l] || dbEmissariesList.Count != emissaries.Length)
 				{
 					sql = "INSERT INTO tablestoalert (tablename) VALUES ('emissaries')";
 					command = new SQLiteCommand(sql, m_dbConnection);
@@ -458,7 +458,7 @@ namespace STWBot_2
 
 			foreach (string petname in dbPetNameList)
 			{
-				if (petname != pets[j])
+				if (petname != pets[j] || dbPetNameList.Count != pets.Length)
 				{
 					sql = "INSERT INTO tablestoalert (tablename) VALUES ('menagerie')";
 					command = new SQLiteCommand(sql, m_dbConnection);
@@ -531,7 +531,7 @@ namespace STWBot_2
 
 			foreach (string boss in dbVhBossesList)
 			{
-				if (boss != vhBosses[j])
+				if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
 				{
 					sql = "INSERT INTO tablestoalert (tablename) VALUES ('vhbosses')";
 					command = new SQLiteCommand(sql, m_dbConnection);
@@ -677,12 +677,23 @@ namespace STWBot_2
 			//util.DownloadNewWowHead();
 
 			//string msg = "Below are the current World Bosses that are active this week:\n\n";
-
 			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
 			m_dbConnection.Open();
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbWorldBossesList = new List<string>();
+
+			sql = "SELECT bossname FROM worldbosses";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbWorldBossesList.Add(reader["bossname"].ToString());
+			}
 
 			List<string> bosses = util.ReturnAllLines("US-epiceliteworld-", "test.txt");
 
@@ -709,6 +720,19 @@ namespace STWBot_2
 				i++;
 			}
 
+			int j = 0;
+
+			foreach (string bossname in dbWorldBossesList)
+			{
+				if (bossname != bossesArray[j] || dbWorldBossesList.Count != bossesArray.Length)
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('worldbosses')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				j++;
+			}
 			//msg.TrimEnd('\n');
 
 			//Console.WriteLine(msg);
@@ -729,6 +753,18 @@ namespace STWBot_2
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbWorldEvents = new List<string>();
+
+			sql = "SELECT eventname FROM worldevents";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+					dbWorldEvents.Add(reader["eventname"].ToString());
+			}
 
 			List<string> worldEvents = util.ReturnAllLines("US-holiday-", "test.txt");
 
@@ -755,6 +791,20 @@ namespace STWBot_2
 				i++;
 			}
 
+			int j = 0;
+
+			foreach (string worldevent in dbWorldEvents)
+			{
+				if (worldevent != worldEventsArray[j] || dbWorldEvents.Count != worldEventsArray.Length)
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('worldevents')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				j++;
+			}
+
 			//msg.TrimEnd('\n');
 
 			//await Context.Channel.SendMessageAsync(msg);
@@ -773,6 +823,18 @@ namespace STWBot_2
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbXurios = new List<string>();
+
+			sql = "SELECT itemname FROM xurios";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbXurios.Add(reader["itemname"].ToString());
+			}
 
 			List<string> xurios = util.ReturnAllLines("US-xurios-", "test.txt");
 
@@ -801,6 +863,20 @@ namespace STWBot_2
 
 				i++;
 			}
+
+			int j = 0;
+
+			foreach (string item in dbXurios)
+			{
+				if (item != xuriosArray[j] || dbXurios.Count != xuriosArray.Length)
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('xurios')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				j++;
+			}
 		}
 
 
@@ -814,6 +890,18 @@ namespace STWBot_2
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbAffixes = new List<string>();
+
+			sql = "SELECT affixname FROM dungeonaffixes";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbAffixes.Add(reader["affixname"].ToString());
+			}
 
 			List<string> mythicAffixesList = util.ReturnAllLines("US-mythicaffix-", "test.txt");
 			string[] mythicAffixes = mythicAffixesList.ToArray();
@@ -857,6 +945,19 @@ namespace STWBot_2
 				i++;
 			}
 
+			int k = 0;
+
+			foreach (string affix in dbAffixes)
+			{
+				if (affix != mythicAffixes[k] || dbAffixes.Count != mythicAffixes.Length)
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('dungeonaffixes')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				k++;
+			}
 
 
 			//Console.WriteLine(mythicAffixes[0] + " " + affixNumbers[0]);
@@ -878,6 +979,18 @@ namespace STWBot_2
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbAssaults = new List<string>();
+
+			sql = "SELECT zonename FROM legionassaults";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbAssaults.Add(reader["zonename"].ToString());
+			}
 
 			string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
 			//string msg = "";
@@ -1033,7 +1146,19 @@ namespace STWBot_2
 			}
 			//await Context.Channel.SendMessageAsync(msg);
 
+			int k = 0;
 
+			foreach (string name in dbAssaults)
+			{
+				if (name != null && name != "")
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('legionassaults')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				k++;
+			}
 
 		}
 
@@ -1051,6 +1176,18 @@ namespace STWBot_2
 
 			string sql;
 			SQLiteCommand command;
+
+			List<string> dbBrokenShore = new List<string>();
+
+			sql = "SELECT buildingstate FROM brokenshorebuildings";
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbBrokenShore.Add(reader["buildingstate"].ToString());
+			}
 
 			string[] buildings = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-progress", "test.txt") };
 			string[] buildingStates = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-state", "test.txt") };
@@ -1132,7 +1269,19 @@ namespace STWBot_2
 			//msg = "Current Broken Shore buildings stats are as follows: \n\n__**Mage Tower**__\n" + buildingStates[0] + "\n" + buildings[0] + "\n\n__**Command Center**__\n" + buildingStates[1] + "\n" + buildings[1] + "\n\n__**Nether Disruptor**__\n" + buildingStates[2] + "\n" + buildings[2];
 
 			//await Context.Channel.SendMessageAsync(msg);
+			int k = 0;
 
+			foreach (string state in dbBrokenShore)
+			{
+				if (state != buildingStates[k])
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('brokenshorebuildings')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				k++;
+			}
 		}
 
 
