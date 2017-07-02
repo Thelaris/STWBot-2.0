@@ -440,7 +440,7 @@ namespace STWBot_2
 			foreach (string pet in pets)
 			{
 				string[] words = pet.Split('>');
-				pets[i] = words[1].TrimStart(' ').Replace("</a", "");
+				pets[i] = words[2].TrimStart(' ').Replace("</a", "");
 
 				sql = "INSERT INTO menagerie (petname) VALUES ('" + pets[i].Replace("'", "''") + "')";
 				command = new SQLiteCommand(sql, m_dbConnection);
@@ -900,6 +900,7 @@ namespace STWBot_2
 			foreach (string time in upcomingAssaultsStr)
 			{
 				upcomingTimesEpoch.Add(Convert.ToInt64(time));
+
 				//Console.WriteLine(time);
 			}
 
@@ -970,7 +971,7 @@ namespace STWBot_2
 					}
 
 				}
-				sql = "INSERT INTO legionassaults (assaulttime, timeleft) VALUES ('" + epochTime + "', '" + hoursLeft + minutesLeft + "')";
+				sql = "INSERT INTO legionassaults (assaulttime, timeleft, length) VALUES ('" + epochTime + "', '" + hoursLeft + minutesLeft + "', '" + length + "')";
 				command = new SQLiteCommand(sql, m_dbConnection);
 				command.ExecuteNonQuery();
 
