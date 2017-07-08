@@ -12,12 +12,13 @@ using Discord.Commands;
 
 namespace STWBot_2
 {
-	class MainClass
+	public class MainClass
 	{
 		private CommandService commands;
-		private DiscordSocketClient client;
+		public DiscordSocketClient client;
 
 		private Utilities util = new Utilities();
+		private Wow commander = new Wow();
 
 		SQLiteConnection m_dbConnection;
 
@@ -26,12 +27,16 @@ namespace STWBot_2
 		//private Discord map;
 		public IServiceProvider map;
 
-		string notFound = "No results found...";
+		public static MainClass instance = null;
+
+		//string notFound = "No results found...";
 
 		public static void Main(string[] args) => new MainClass().MainAsync().GetAwaiter().GetResult();
 
 		public async Task MainAsync()
 		{
+			if (instance == null)
+				instance = this;
 			
 			client = new DiscordSocketClient(new DiscordSocketConfig
 			{
@@ -57,7 +62,7 @@ namespace STWBot_2
 			await CheckInvasions();
 			await CheckBrokenShoreBuildings();
 			//await CheckInvasionTimes();
-
+			//await commander.Invasion();
 
 
 			client.Log += Log;
@@ -1003,8 +1008,8 @@ namespace STWBot_2
 			int length = Convert.ToInt32(words[14].Replace(" ", "").Replace("});</script></div>", ""));
 			string zoneName = words[12].Replace("\"", "").Replace(",upcoming", "");
 
-			Console.WriteLine(upcomingAssaultsStr[0]);
-			Console.WriteLine(length);
+			//Console.WriteLine(upcomingAssaultsStr[0]);
+			//Console.WriteLine(length);
 
 			List<long> upcomingTimesEpoch = new List<long>();
 
@@ -1150,7 +1155,7 @@ namespace STWBot_2
 
 			foreach (string name in dbAssaults)
 			{
-				if (name != null && name != "")
+				if (name != null && name != "" && name != zoneName)
 				{
 					sql = "INSERT INTO tablestoalert (tablename) VALUES ('legionassaults')";
 					command = new SQLiteCommand(sql, m_dbConnection);
