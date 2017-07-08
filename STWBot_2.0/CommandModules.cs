@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Timers;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Data.SQLite;
+using System.Diagnostics;
+using Discord.Audio;
 using Discord.Commands;
 
 namespace STWBot_2
@@ -13,16 +16,111 @@ namespace STWBot_2
 		public CommandModules()
 		{
 		}
+
 	}
 
 	public class Info : ModuleBase
 	{
+		private readonly ConcurrentDictionary<ulong, IAudioClient> ConnectedChannels = new ConcurrentDictionary<ulong, IAudioClient>();
+
 		[Command("say"), Summary("Echos a message.")]
 		public async Task Say([Remainder, Summary("The text to echo")] string echo)
 		{
 			await ReplyAsync(echo);
 		}
+
+		[Command("hello", RunMode = RunMode.Async)]
+		public async Task JoinChannel(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "LWC-Hello.mp3");
+
+		}
+
+		[Command("youarenotprepared", RunMode = RunMode.Async)]
+		public async Task YouAreNotPrepared(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "Illidan-YANP.mp3");
+
+		}
+
+		[Command("nihao", RunMode = RunMode.Async)]
+		public async Task MeiNiHao(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "Mei_-_Nǐ_hao.ogg");
+
+		}
+
+		[Command("leave", RunMode = RunMode.Async)]
+		public async Task LeaveCmd(Discord.IVoiceChannel channel = null)
+		{
+			Console.WriteLine("Trying to leave");
+			ulong guildID = (Context.Guild as Discord.IGuild).Id;
+			IAudioClient client;
+			ConnectedChannels.TryRemove(Context.Guild.Id, out client);
+			Console.WriteLine(ConnectedChannels.TryGetValue(Context.Guild.Id, out client));
+			//ffmpeg.Dispose();
+			//await discord.FlushAsync();
+			//await DisconnectAsync();
+			//await audioClient.StopAsync();
+		}
+
+		private Process CreateStream(string path)
+		{
+			var ffmpeg = new ProcessStartInfo
+			{
+				FileName = "ffmpeg",
+				Arguments = $"-i {path} -ac 2 -f s16le -ar 48000 pipe:1",
+				UseShellExecute = false,
+				RedirectStandardOutput = true,
+			};
+			return Process.Start(ffmpeg);
+		}
+
+		private async Task SendAsync(IAudioClient client, string path)
+		{
+			var audioClient = client;
+			// Create FFmpeg using the previous example
+			var ffmpeg = CreateStream(path);
+			var output = ffmpeg.StandardOutput.BaseStream;
+			//playing = true;
+			var discord = client.CreatePCMStream(AudioApplication.Mixed, default(int?) ,10);
+			await output.CopyToAsync(discord);
+			await discord.FlushAsync();
+			System.Threading.Thread.Sleep(1000);
+			await client.StopAsync();
+		}
 	}
+
 
 	[Group("sample")]
 	public class Sample : ModuleBase
@@ -80,7 +178,7 @@ namespace STWBot_2
 
 			while (reader.Read())
 			{
-				if (reader["zonename"] != null)
+				if (reader["zonename"].ToString() != "" && reader["zonename"].ToString() != null)
 				{
 					zoneName = reader["zonename"].ToString();
 				}
@@ -127,7 +225,7 @@ namespace STWBot_2
 							hoursLeft = "";
 						}
 						string zone = "";
-						if (zoneName != "" || zoneName != null)
+						if (zoneName != "" && zoneName != null)
 						{
 							zone = zoneName;
 						}
@@ -874,7 +972,7 @@ namespace STWBot_2
 
 		public async Task Testing()
 		{
-			
+
 
 		}
 	}
