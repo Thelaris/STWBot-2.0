@@ -129,7 +129,7 @@ namespace STWBot_2
 			}
 			*/
 			//if (results.Count < 1)
-			return "No results found...";
+			return "";
 
 		}
 
