@@ -94,6 +94,7 @@
     <Compile Include="CommandModules.cs" />
     <Compile Include="Utilities.cs" />
     <Compile Include="Token.cs" />
+    <Compile Include="AudioService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
