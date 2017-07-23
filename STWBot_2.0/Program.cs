@@ -9,11 +9,15 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Net.Providers.WS4Net;
 using Discord.Commands;
+using log4net;
+
 
 namespace STWBot_2
 {
 	public class MainClass
 	{
+		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
 		private CommandService commands;
 		public DiscordSocketClient client;
 
@@ -35,6 +39,7 @@ namespace STWBot_2
 
 		public async Task MainAsync()
 		{
+			log.Info("Starting STWBot-2.0!");
 			if (instance == null)
 				instance = this;
 			

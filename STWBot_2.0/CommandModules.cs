@@ -8,11 +8,14 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using Discord.Audio;
 using Discord.Commands;
+using log4net;
 
 namespace STWBot_2
 {
 	public class CommandModules
 	{
+		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
 		public CommandModules()
 		{
 		}
@@ -21,6 +24,8 @@ namespace STWBot_2
 
 	public class Info : ModuleBase
 	{
+		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
 		private readonly ConcurrentDictionary<ulong, IAudioClient> ConnectedChannels = new ConcurrentDictionary<ulong, IAudioClient>();
 
 		[Command("say"), Summary("Echos a message.")]
@@ -207,6 +212,8 @@ namespace STWBot_2
 	[Group("sample")]
 	public class Sample : ModuleBase
 	{
+		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
 		[Command("square"), Summary("Squares a number.")]
 		public async Task Square([Summary("The number to square.")] int num)
 		{
@@ -222,6 +229,8 @@ namespace STWBot_2
 
 	public class Wow : ModuleBase
 	{
+		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
 		SQLiteConnection m_dbConnection;
 
 

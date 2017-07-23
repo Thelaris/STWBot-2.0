@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Linq;
+using log4net;
 
 namespace STWBot_2
 {
 	public class Utilities
 	{
+		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
 		public Utilities()
 		{
 		}
