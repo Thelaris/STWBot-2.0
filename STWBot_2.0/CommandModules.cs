@@ -43,7 +43,8 @@ namespace STWBot_2
 
 			//Console.WriteLine("Attempting to send audio...");
 			await SendAsync(audioClient, "LWC-Hello.mp3");
-
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
 		}
 
 		[Command("youarenotprepared", RunMode = RunMode.Async)]
@@ -60,7 +61,8 @@ namespace STWBot_2
 
 			//Console.WriteLine("Attempting to send audio...");
 			await SendAsync(audioClient, "Illidan-YANP.mp3");
-
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
 		}
 
 		[Command("nihao", RunMode = RunMode.Async)]
@@ -77,6 +79,87 @@ namespace STWBot_2
 
 			//Console.WriteLine("Attempting to send audio...");
 			await SendAsync(audioClient, "Mei_-_Nǐ_hao.ogg");
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
+		}
+
+		[Command("corn", RunMode = RunMode.Async)]
+		public async Task UncleGoaCorn(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "Corn.mp3");
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
+
+		}
+
+		[Command("peppers", RunMode = RunMode.Async)]
+		public async Task UncleGoaPeppers(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "Peppers.mp3");
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
+
+		}
+
+		[Command("perfectbrew", RunMode = RunMode.Async)]
+		public async Task UncleGoaPerfectBrew(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "PerfectBrew.mp3");
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
+
+		}
+
+		[Command("whyskinny", RunMode = RunMode.Async)]
+		public async Task ChenWhyWouldIWantToBeSkinny(Discord.IVoiceChannel channel = null)
+		{
+			// Get the audio channel
+			channel = (Context.Message.Author as Discord.IGuildUser).VoiceChannel;
+			if (channel == null) { await Context.Message.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+
+			// For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+			var audioClient = await channel.ConnectAsync();
+
+			ConnectedChannels.TryAdd(Context.Guild.Id, audioClient);
+
+			//Console.WriteLine("Attempting to send audio...");
+			await SendAsync(audioClient, "WhyWouldIWantToBeSkinny.mp3");
+			//System.Threading.Thread.Sleep(5000);
+			await audioClient.StopAsync();
+			audioClient = await channel.ConnectAsync();
+			await SendAsync(audioClient, "LookAtBigBelly.mp3");
+			System.Threading.Thread.Sleep(1000);
+			await audioClient.StopAsync();
 
 		}
 
@@ -116,8 +199,7 @@ namespace STWBot_2
 			var discord = client.CreatePCMStream(AudioApplication.Mixed, default(int?) ,10);
 			await output.CopyToAsync(discord);
 			await discord.FlushAsync();
-			System.Threading.Thread.Sleep(1000);
-			await client.StopAsync();
+
 		}
 	}
 
