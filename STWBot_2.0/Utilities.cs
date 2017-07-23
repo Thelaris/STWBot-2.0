@@ -141,8 +141,16 @@ namespace STWBot_2
 		{
 			WebClient webClient = new WebClient();
 			webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
-			string htmlCode = webClient.DownloadString("https://wowhead.com");
-			System.IO.File.WriteAllText(@"test.txt", htmlCode);
+			try
+			{
+				
+				string htmlCode = webClient.DownloadString("https://wowhead.com");
+				System.IO.File.WriteAllText(@"test.txt", htmlCode);
+			}
+			catch (Exception ex)
+			{
+
+			}
 		}
 
 		public void DownloadNewMageTower()
