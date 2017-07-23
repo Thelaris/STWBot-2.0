@@ -155,10 +155,10 @@ namespace STWBot_2
 
 		public void DownloadNewMageTower()
 		{
-			WebClient webClient = new WebClient();
-			webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
-			string htmlCode = webClient.DownloadString("https://data.magetower.info");
-			System.IO.File.WriteAllText(@"magetower.txt", htmlCode);
+			//WebClient webClient = new WebClient();
+			//webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+			//string htmlCode = webClient.DownloadString("https://data.magetower.info");
+			//System.IO.File.WriteAllText(@"magetower.txt", htmlCode);
 		}
 
 	}
