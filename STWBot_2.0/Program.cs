@@ -352,7 +352,8 @@ namespace STWBot_2
 		{
 			if (client.ConnectionState == ConnectionState.Connected)
 			{
-				Console.WriteLine("FIRED!");
+				//Console.WriteLine("FIRED!");
+				log.Debug("Timer has elapsed - firing checks");
 				m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
 				m_dbConnection.Open();
 
@@ -377,6 +378,8 @@ namespace STWBot_2
 				await CheckDailyReset();
 				await CheckWowToken();
 
+				log.Debug("Checking complete!");
+				log.Debug("Start sending auto alerts");
 
 				sql = "SELECT tablename FROM tablestoalert";
 				command = new SQLiteCommand(sql, m_dbConnection);
@@ -395,11 +398,15 @@ namespace STWBot_2
 				while (reader.Read())
 				{
 					Console.WriteLine("READ!");
+					log.Debug("Reading which guilds and channels to send alerts to from DB");
 					foreach (string table in tablenames)
 					{
+						log.Debug("There was a change in the " + table + " table - alerting!");
 						await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync("There was a change in " + table);
 					}
 				}
+
+				log.Debug("Alerts completed! Cleaning up...");
 
 				sql = "DELETE FROM tablestoalert";
 				command = new SQLiteCommand(sql, m_dbConnection);

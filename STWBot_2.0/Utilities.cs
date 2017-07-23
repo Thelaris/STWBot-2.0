@@ -143,13 +143,16 @@ namespace STWBot_2
 			webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
 			try
 			{
-				
+				log.Debug("Downloading HTML source from WoWHead.com");
 				string htmlCode = webClient.DownloadString("https://wowhead.com");
+				log.Debug("WoWHead.com HTML source downloaded!");
+				log.Debug("Writing WoWHead.com HTML source to file");
 				System.IO.File.WriteAllText(@"test.txt", htmlCode);
+				log.Debug("Completed writing WoWHead.com HTML source to file!");
 			}
 			catch (Exception ex)
 			{
-
+				log.Fatal("WoWHead html source download failed: " + ex);
 			}
 		}
 
