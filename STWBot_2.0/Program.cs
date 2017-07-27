@@ -10,6 +10,8 @@ using Discord.WebSocket;
 using Discord.Net.Providers.WS4Net;
 using Discord.Commands;
 using log4net;
+using HtmlAgilityPack;
+using System.Linq;
 
 
 namespace STWBot_2
@@ -42,7 +44,7 @@ namespace STWBot_2
 			log.Info("Starting STWBot-2.0!");
 			if (instance == null)
 				instance = this;
-			
+
 			client = new DiscordSocketClient(new DiscordSocketConfig
 			{
 				WebSocketProvider = WS4NetProvider.Instance,
@@ -51,12 +53,13 @@ namespace STWBot_2
 
 			map = null;
 
+#region InitalStartup
 			util.DownloadNewWowHead();
 
 			await InstallCommands();
 			await ConnectToDB();
-			await CheckEmissaries();
-			await CheckMenagerie();
+			await CheckEmissaries2();
+			//await CheckMenagerie();
 			await CheckVHBosses();
 			await CheckDailyReset();
 			await CheckWowToken();
@@ -68,6 +71,24 @@ namespace STWBot_2
 			await CheckBrokenShoreBuildings();
 			//await CheckInvasionTimes();
 			//await commander.Invasion();
+			//*/
+			GetInnerText("//a[contains(@id,'US-emissary-')]");
+			GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
+			//"//a[contains(@id,'US-emissary-')]"
+			//await CheckWithHap("a", "id", null, "US-emissary-", "test");
+			GetInnerText("//a[contains(@id,'US-menagerie-')]");
+			GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
+			GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
+			GetInnerText("//a[contains(@id,'US-holiday-')]");
+			GetInnerText("//a[contains(@id,'US-xurios-')]");
+			GetInnerText("//a[contains(@id,'US-violethold-')]");
+			GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp");
+			GetInnerText("//span[contains(@class,'moneygold')]", 1);
+			GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
+			GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
+			GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
+			GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]");
+
 
 
 			client.Log += Log;
@@ -79,7 +100,9 @@ namespace STWBot_2
 			await client.LoginAsync(TokenType.Bot, tokenRef.token);
 			await client.StartAsync();
 
+#endregion
 
+#region Hide
 			//await 
 
 			client.SetGameAsync("Testing");
@@ -298,13 +321,13 @@ namespace STWBot_2
 
 			//if (newUser..VoiceChannel.Id == client.GetChannel(306107185145053194).Id)
 			//{
-				Console.WriteLine("PUG!");
-				user.AddRoleAsync(pugsRole);
+			Console.WriteLine("PUG!");
+			user.AddRoleAsync(pugsRole);
 			//}
 			//else
 			//{
-				Console.WriteLine("MEMBER!");
-				user.AddRoleAsync(membersRole);
+			Console.WriteLine("MEMBER!");
+			user.AddRoleAsync(membersRole);
 			//}
 
 			return Task.FromResult(true);
@@ -780,7 +803,7 @@ namespace STWBot_2
 
 			while (reader.Read())
 			{
-					dbWorldEvents.Add(reader["eventname"].ToString());
+				dbWorldEvents.Add(reader["eventname"].ToString());
 			}
 
 			List<string> worldEvents = util.ReturnAllLines("US-holiday-", "test.txt");
@@ -1148,7 +1171,7 @@ namespace STWBot_2
 				}
 				if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
 				{
-					
+
 					Console.WriteLine(zone);
 					Console.WriteLine(j);
 					sql = "UPDATE legionassaults SET zonename = '" + zone.Replace("'", "''") + "', timeleft = '" + hoursLeft + minutesLeft + "' WHERE id = " + j;
@@ -1157,8 +1180,8 @@ namespace STWBot_2
 
 				}
 
-				//goto NextEpochTime;
-			//NextEpochTime:
+				//goto NextEpochTime;s
+				//NextEpochTime:
 				j++;
 			}
 			//await Context.Channel.SendMessageAsync(msg);
@@ -1301,6 +1324,231 @@ namespace STWBot_2
 			}
 		}
 
+#endregion
+
+		public List<string> GetInnerText(string xpath, int doOnce = 0)
+		{
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
+
+			var aTags = doc.DocumentNode.SelectNodes(xpath);
+
+			List<string> list = new List<string>();
+
+			if (aTags != null)
+			{
+				foreach (var aTag in aTags)
+				{
+					if (aTag.InnerText != "")
+					{
+						log.Info(aTag.InnerText);
+						list.Add(aTag.InnerText);
+					}
+					if (doOnce != 0) break;
+				}
+			}
+
+			//List<string> list = aTags.ToList();
+
+			return list;
+		}
+
+		public List<string> GetAttributeValue(string xpath, string attribute)
+		{
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
+
+			var aTags = doc.DocumentNode.SelectNodes(xpath);
+
+			List<string> list = new List<string>();
+
+			foreach (var aTag in aTags)
+			{
+				if (aTag != null)
+				{
+					log.Info(aTag.Attributes[attribute].Value);
+					list.Add(aTag.Attributes[attribute].Value);
+				}
+			}
+			return list;
+		}
+
+		public async Task CheckWithHapOLD(string htmlTag, string attributeA, string attributeB, string value, string attributeC, int number = 0)
+		{
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
+
+			var aTags = doc.DocumentNode.SelectNodes("//" + htmlTag + "[contains(@" + attributeA + ",'" + value + "')]");
+
+			if (aTags != null)
+			{
+				foreach (var aTag in aTags)	
+				{
+					if (aTag.InnerText != "")
+					{
+						log.Info(aTag.InnerText);
+						if (number != 0) break;
+					}
+
+					if (attributeB != null)
+					{
+						log.Info(aTag.Attributes[attributeB].Value);
+					}
+				}
+
+				if (attributeC != null)
+				{
+					aTags = doc.DocumentNode.SelectNodes("//" + htmlTag + "[contains(@" + attributeA + ",'" + value + "')]/../script");
+
+					foreach (var aTag in aTags)
+					{
+						log.Info(aTag.InnerText);
+					}
+				}
+			}
+
+			return;
+
+		}
+
+		public async Task CheckWithHapAttribute(string htmlTag, string attributeA, string attributeB, string value = null)
+		{
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
+
+			var aTags = doc.DocumentNode.SelectNodes("//" + htmlTag + "[contains(@" + attributeA + ",'" + value + "')]");
+
+			if (aTags != null)
+			{
+				foreach (var aTag in aTags)
+				{
+					//if (aTag.Attributes["id"].Value == "US-emissary-1")
+					//{
+					log.Info(aTag.Attributes[attributeB].Value);
+					//log.Info(aTag.InnerText);
+					//}
+				}
+			}
+			else
+			{
+				log.Info("TAG IS NULL");
+			}
+		}
+
+		public List<string> GetDBResults(string column, string table)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			List<string> dbResults = new List<string>();
+
+			sql = "SELECT " + column + " FROM " + table;
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbResults.Add(reader[column].ToString());
+			}
+
+			m_dbConnection.Close();
+
+			return dbResults;
+		}
+
+		public void DBDropTable(string table)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			sql = "DELETE FROM " + table;
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+		}
+
+		public void InsertToDB(string columnOne, string valueOne, string columnTwo = null, string valueTwo = null, string columnThree = null, string valueThree = null, string table = null)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			string columns = columnOne;
+			string values = "'" + valueOne + "'";
+
+			if (columnTwo != null)
+			{
+				columns += ", " + columnTwo;
+				values += ", '" + valueTwo + "'";
+			}
+
+			if (columnThree != null)
+			{
+				columns += ", " + columnThree;
+				values += ", '" + valueThree + "'";
+			}
+
+			sql = "INSERT INTO " + table + " (" + columns + ") VALUES (" + values + ")";
+
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+		}
+
+		public async Task CheckEmissaries2()
+		{
+			List<string> dbEmissariesList = GetDBResults("name", "emissaries");
+			List<string> dbTimeLeftList = GetDBResults("timeleft", "emissaries");
+
+			List<string> emissariesList = GetInnerText("//a[contains(@id,'US-emissary-')]");
+			List<string> timeLeftList = GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
+
+			string[] timeLeftArray = timeLeftList.ToArray();
+
+			int i = 0;
+			foreach (string time in timeLeftArray)
+			{
+				string[] split = time.Split('"');
+				timeLeftArray[i] = split[1].Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
+				log.Debug(timeLeftArray[i]);
+				i++;
+			}
+
+			log.Debug("Updating emissaries");
+
+			DBDropTable("emissaries");
+
+			int j = 0;
+			foreach (string time in timeLeftArray)
+			{
+				log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
+				InsertToDB("name", emissariesList[j], "timeleft", timeLeftArray[j], null, null, "emissaries");
+				j++;
+			}
+
+			int k = 0;
+			foreach (string emissary in dbEmissariesList)
+			{
+				if (emissary != emissariesList[k] || dbEmissariesList.Count != emissariesList.Count)
+				{
+					InsertToDB("tablename", "emissaries", null, null, null, null, "tablestoalert");
+					break;
+				}
+				k++;
+			}
+			m_dbConnection.Close();
+		}
 
 
 		/* Moved to CommandModules
@@ -1436,5 +1684,8 @@ namespace STWBot_2
 			return lines.Length >= lineNo ? lines[lineNo - 1] : null;
 		}
 		*/
+
+
+
 	}
 }
