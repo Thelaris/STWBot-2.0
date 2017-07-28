@@ -59,7 +59,7 @@ namespace STWBot_2
 			await InstallCommands();
 			await ConnectToDB();
 			await CheckEmissaries2();
-			//await CheckMenagerie();
+			await CheckMenagerie2();
 			await CheckVHBosses();
 			await CheckDailyReset();
 			await CheckWowToken();
@@ -1547,9 +1547,82 @@ namespace STWBot_2
 				}
 				k++;
 			}
-			m_dbConnection.Close();
 		}
 
+
+		public async Task CheckMenagerie2()
+		{
+			List<string> dbPetNameList = GetDBResults("petname", "menagerie");
+			List<string> petsList = GetInnerText("//a[contains(@id,'US-menagerie-')]");
+
+			string[] pets = petsList.ToArray();
+
+			DBDropTable("menagerie");
+
+			int i = 0;
+			foreach (string pet in pets)
+			{
+				//log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
+				InsertToDB("petname", pets[i], null, null, null, null, "menagerie");
+				i++;
+			}
+
+			int j = 0;
+			foreach (string petname in dbPetNameList)
+			{
+				if (petname != pets[j] || dbPetNameList.Count != pets.Length)
+				{
+					InsertToDB("tablename", "menagerie", null, null, null, null, "tablestoalert");
+					break;
+				}
+				j++;
+			}
+		}
+
+		public async Task CheckVHBosses2()
+		{
+			List<string> dbVhBossesList = GetDBResults("bossname", "vhbosses");
+			List<string> vhBossesList = GetInnerText("//a[contains(@id,'US-violethold-')]");
+			string[] vhBosses = vhBossesList.ToArray();
+
+			DBDropTable("vhbosses");
+
+			int i = 0;
+			foreach (string boss in vhBosses)
+			{
+				if (boss != "No results found...")
+				{
+					string[] words = boss.Split('>');
+					vhBosses[i] = words[1].Replace("</a", "");
+
+					sql = "INSERT INTO vhbosses (bossname) VALUES ('" + vhBosses[i].Replace("'", "''") + "')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+
+					i++;
+				}
+			}
+
+			//msg = "Current bosses active in the Violet Hold this week are:\n\n**" + vhBosses[0] + "**\n\n**" + vhBosses[1] + "**\n\n**" + vhBosses[2] + "**";
+
+			//await Context.Channel.SendMessageAsync(msg);
+
+			int j = 0;
+
+			foreach (string boss in dbVhBossesList)
+			{
+				if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
+				{
+					sql = "INSERT INTO tablestoalert (tablename) VALUES ('vhbosses')";
+					command = new SQLiteCommand(sql, m_dbConnection);
+					command.ExecuteNonQuery();
+					break;
+				}
+				j++;
+			}
+
+			m_dbConnection.Close();
+		}
 
 		/* Moved to CommandModules
 		public Task CheckInvasionTimes()
