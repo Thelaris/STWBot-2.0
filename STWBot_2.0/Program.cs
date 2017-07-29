@@ -1,4 +1,5 @@
-﻿using System;
+﻿#region namespaces
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Reflection;
@@ -10,31 +11,30 @@ using Discord.WebSocket;
 using Discord.Net.Providers.WS4Net;
 using Discord.Commands;
 using log4net;
-
+using HtmlAgilityPack;
+using System.Linq;
+#endregion
 
 namespace STWBot_2
 {
 	public class MainClass
 	{
+#region fields
 		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
 		private CommandService commands;
 		public DiscordSocketClient client;
-
 		private Utilities util = new Utilities();
 		private Wow commander = new Wow();
-
 		SQLiteConnection m_dbConnection;
-
 		private Token tokenRef = new Token();
-		//private IServiceProvider map;
-		//private Discord map;
 		public IServiceProvider map;
-
 		public static MainClass instance = null;
+		private int checkTimerInit = 600000; //600000 = 10mins
+		private int checkTimer = 0;
+		private Timer t = new Timer();
+#endregion
 
-		//string notFound = "No results found...";
-
+#region Inital Startup / Main
 		public static void Main(string[] args) => new MainClass().MainAsync().GetAwaiter().GetResult();
 
 		public async Task MainAsync()
@@ -42,7 +42,7 @@ namespace STWBot_2
 			log.Info("Starting STWBot-2.0!");
 			if (instance == null)
 				instance = this;
-			
+
 			client = new DiscordSocketClient(new DiscordSocketConfig
 			{
 				WebSocketProvider = WS4NetProvider.Instance,
@@ -53,22 +53,40 @@ namespace STWBot_2
 
 			util.DownloadNewWowHead();
 
+			log.Debug("");
+			log.Debug("---------- START INTIAL STARTUP SELF TEST ----------");
+			log.Debug("     ----- Testing Emissaries -----");
+			GetInnerText("//a[contains(@id,'US-emissary-')]");
+			GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
+			log.Debug("     ----- Testing Menagerie -----");
+			GetInnerText("//a[contains(@id,'US-menagerie-')]");
+			log.Debug("     ----- Testing Mythic+ Affixes -----");
+			GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
+			log.Debug("     ----- Testing World Bosses -----");
+			GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
+			log.Debug("     ----- Testing World Events -----");
+			GetInnerText("//a[contains(@id,'US-holiday-')]");
+			log.Debug("     ----- Testing Xur'ios -----");
+			GetInnerText("//a[contains(@id,'US-xurios-')]");
+			log.Debug("     ----- Testing Violet Hold Bosses -----");
+			GetInnerText("//a[contains(@id,'US-violethold-')]");
+			log.Debug("     ----- Testing Daily Reset -----");
+			GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp");
+			log.Debug("     ----- Testing WoW Token -----");
+			GetInnerText("//span[contains(@class,'moneygold')]", 1);
+			log.Debug("     ----- Testing Broken Shore Buildings -----");
+			GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
+			GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
+			GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
+			log.Debug("     ----- Testing Legion Assaults -----");
+			GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]");
+			log.Debug("---------- END INTIAL STARTUP SELF TEST ----------");
+			log.Debug("");
+
 			await InstallCommands();
 			await ConnectToDB();
-			await CheckEmissaries();
-			await CheckMenagerie();
-			await CheckVHBosses();
-			await CheckDailyReset();
-			await CheckWowToken();
-			await CheckWorldBosses();
-			await CheckWorldEvents();
-			await CheckXurios();
-			await CheckAffixes();
-			await CheckInvasions();
-			await CheckBrokenShoreBuildings();
-			//await CheckInvasionTimes();
-			//await commander.Invasion();
 
+			await RunChecks();
 
 			client.Log += Log;
 			client.JoinedGuild += JoinedNewGuild;
@@ -79,13 +97,10 @@ namespace STWBot_2
 			await client.LoginAsync(TokenType.Bot, tokenRef.token);
 			await client.StartAsync();
 
-
-			//await 
-
 			client.SetGameAsync("Testing");
 
-			Timer t = new Timer();
-			t.Interval = 600000; //In milliseconds here
+
+			t.Interval = checkTimer; //In milliseconds here //600000
 			t.AutoReset = true; //Stops it from repeating
 			t.Elapsed += new ElapsedEventHandler(TimerElapsed);
 			t.Start();
@@ -93,7 +108,9 @@ namespace STWBot_2
 			// Block this task until the program is closed (infinite delay)
 			await Task.Delay(-1);
 		}
+#endregion
 
+#region Methods
 		public async Task InstallCommands()
 		{
 			//Hook the MessageReceived Event into our Command Handler
@@ -121,16 +138,6 @@ namespace STWBot_2
 			if (!result.IsSuccess)
 				await context.Channel.SendMessageAsync(result.ErrorReason);
 		}
-
-		/*
-		private async Task MessageReceived(SocketMessage message)
-		{
-			if (message.Content == "!ping")
-			{
-				await message.Channel.SendMessageAsync("Pong!");
-			}
-		}
-		*/
 
 		public async Task ConnectToDB()
 		{
@@ -162,120 +169,23 @@ namespace STWBot_2
 			m_dbConnection.Close();
 		}
 
-
-		public async Task CheckEmissaries()
+		public async Task RunChecks()
 		{
-			//util.DownloadNewWowHead();
-
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> emissariesList = new List<string>();
-			List<string> timeLeftList = new List<string>();
-
-			List<string> dbEmissariesList = new List<string>();
-			List<string> dbTimeLeftList = new List<string>();
-
-			List<string> emissariesAndTimesList = util.ReturnAllLines("US-emissary", "test.txt");
-
-			sql = "SELECT name, timeleft FROM emissaries";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
-			{
-				dbEmissariesList.Add(reader["name"].ToString());
-				dbTimeLeftList.Add(reader["timeleft"].ToString());
-			}
-
-
-			int i = 1;
-			foreach (string record in emissariesAndTimesList)
-			{
-				if (i % 2 != 0)
-				{
-					emissariesList.Add(record);
-				}
-				else
-				{
-					timeLeftList.Add(record);
-				}
-
-				i++;
-			}
-			//string[] timeLeft = { util.GetLine("\'US--1\'", "test.txt"), util.GetLine("\'US--2\'", "test.txt"), util.GetLine("\'US--3\'", "test.txt") };
-
-			string[] emissaries = emissariesList.ToArray();
-			string[] timeLeft = timeLeftList.ToArray();
-
-			//string msg = "Current active emissaries are:\n\n";
-
-			int j = 0;
-
-			foreach (string emissary in emissaries)
-			{
-				Console.WriteLine(emissary);
-				string[] words = emissary.Split('>');
-				emissaries[j] = words[1].TrimEnd('<', '/', 'a');
-
-
-				j++;
-			}
-
-			Console.WriteLine(DateTime.Now + " - Updating emissaries...");
-
-			int k = 0;
-
-			sql = "DELETE FROM emissaries";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-			//goto
-
-			foreach (string time in timeLeft)
-			{
-				sql = "SELECT name, timeleft FROM emissaries WHERE id = " + k;
-				command = new SQLiteCommand(sql, m_dbConnection);
-
-				string[] numbers = time.Split(',');
-				timeLeft[k] = numbers[1].TrimStart('"', ' ').TrimEnd('"').Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
-
-				/*if (emissariesList[k] != dbEmissariesList[k] || timeLeftList[k] != dbTimeLeftList[k])
-				{
-					//sql = "DELETE * FROM emissaries WHERE id = '" + k + "'";
-					//command = new SQLiteCommand(sql, m_dbConnection);
-					//command.ExecuteNonQuery();
-				}
-				*/
-
-				sql = "INSERT INTO emissaries (name, timeleft) VALUES ('" + emissaries[k] + "', '" + timeLeft[k] + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				//msg += "**" + emissaries[k] + "** - __" + timeLeft[k] + "__ remaining to complete\n\n";
-				k++;
-			}
-
-			int l = 0;
-
-			foreach (string emissary in dbEmissariesList)
-			{
-				if (emissary != emissaries[l] || dbEmissariesList.Count != emissaries.Length)
-				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('emissaries')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
-				}
-				l++;
-			}
-
-			m_dbConnection.Close();
+			checkTimer = checkTimerInit;
+			t.Interval = checkTimer;
+			log.Debug($"Check timer is set for every {checkTimer} milliseconds");
+			await CheckEmissaries();
+			await CheckMenagerie();
+			await CheckVHBosses();
+			await CheckDailyReset();
+			await CheckWowToken();
+			await CheckWorldBosses();
+			await CheckWorldEvents();
+			await CheckXurios();
+			await CheckAffixes();
+			await CheckInvasions();
+			await CheckBrokenShoreBuildings();
 		}
-
 
 		public async Task CheckWowhead()
 		{
@@ -283,8 +193,6 @@ namespace STWBot_2
 
 			//await AddToDB();
 		}
-
-
 
 		private Task UserJoined(SocketGuildUser user)
 		{
@@ -298,13 +206,13 @@ namespace STWBot_2
 
 			//if (newUser..VoiceChannel.Id == client.GetChannel(306107185145053194).Id)
 			//{
-				Console.WriteLine("PUG!");
-				user.AddRoleAsync(pugsRole);
+			Console.WriteLine("PUG!");
+			user.AddRoleAsync(pugsRole);
 			//}
 			//else
 			//{
-				Console.WriteLine("MEMBER!");
-				user.AddRoleAsync(membersRole);
+			Console.WriteLine("MEMBER!");
+			user.AddRoleAsync(membersRole);
 			//}
 
 			return Task.FromResult(true);
@@ -312,10 +220,9 @@ namespace STWBot_2
 
 		private Task Log(LogMessage msg)
 		{
-			Console.WriteLine(msg.ToString());
+			log.Info(msg.ToString());
 			return Task.FromResult(false);
 		}
-
 
 		private Task JoinedNewGuild(SocketGuild guild)
 		{
@@ -331,7 +238,6 @@ namespace STWBot_2
 
 			return null;
 		}
-
 
 		private Task LeftGuild(SocketGuild guild)
 		{
@@ -355,31 +261,20 @@ namespace STWBot_2
 				//Console.WriteLine("FIRED!");
 				log.Debug("Timer has elapsed - firing checks");
 				m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-				m_dbConnection.Open();
 
 				string sql;
 				SQLiteCommand command;
 
 				List<string> tablenames = new List<string>();
 
-				m_dbConnection.Close();
-
 				await CheckWowhead();
 
-				await CheckBrokenShoreBuildings();
-				await CheckInvasions();
-				await CheckEmissaries();
-				await CheckMenagerie();
-				await CheckAffixes();
-				await CheckVHBosses();
-				await CheckWorldBosses();
-				await CheckWorldEvents();
-				await CheckXurios();
-				await CheckDailyReset();
-				await CheckWowToken();
+				await RunChecks();
 
 				log.Debug("Checking complete!");
 				log.Debug("Start sending auto alerts");
+
+				m_dbConnection.Open();
 
 				sql = "SELECT tablename FROM tablestoalert";
 				command = new SQLiteCommand(sql, m_dbConnection);
@@ -411,1030 +306,752 @@ namespace STWBot_2
 				sql = "DELETE FROM tablestoalert";
 				command = new SQLiteCommand(sql, m_dbConnection);
 				command.ExecuteNonQuery();
+
+				m_dbConnection.Close();
 			}
 		}
 
-
-		public async Task CheckMenagerie()
+		public List<string> GetInnerText(string xpath, int doOnce = 0)
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
 
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
+			var aTags = doc.DocumentNode.SelectNodes(xpath);
 
-			string sql;
-			SQLiteCommand command;
+			List<string> list = new List<string>();
 
-			List<string> dbPetNameList = new List<string>();
-
-			sql = "SELECT petname FROM menagerie";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			if (aTags != null)
 			{
-				dbPetNameList.Add(reader["petname"].ToString());
-			}
-
-			List<string> petsList = util.ReturnAllLines("US-menagerie-", "test.txt");
-			Console.WriteLine(petsList[0]);
-			//string[] pets = { util.GetLine("US-menagerie-1", "test.txt"), util.GetLine("US-menagerie-2", "test.txt"), util.GetLine("US-menagerie-3", "test.txt") };
-
-			string[] pets = petsList.ToArray();
-
-			string msg = "Pets currently active in your Garrison's Managerie this week are:\n\n";
-
-			Console.WriteLine(DateTime.Now + " - Updating menagerie...");
-
-			sql = "DELETE FROM menagerie";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			int i = 0;
-
-			foreach (string pet in pets)
-			{
-				string[] words = pet.Split('>');
-				pets[i] = words[2].TrimStart(' ').Replace("</a", "");
-
-				sql = "INSERT INTO menagerie (petname) VALUES ('" + pets[i].Replace("'", "''") + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-
-				msg += "**" + pets[i] + "**\n\n";
-
-
-
-				i++;
-			}
-
-			int j = 0;
-
-			foreach (string petname in dbPetNameList)
-			{
-				if (petname != pets[j] || dbPetNameList.Count != pets.Length)
+				foreach (var aTag in aTags)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('menagerie')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
+					if (aTag.InnerText != "")
+					{
+						log.Info(aTag.InnerText);
+						list.Add(aTag.InnerText);
+					}
+					if (doOnce != 0) break;
 				}
-				j++;
 			}
 
-			m_dbConnection.Close();
+			//List<string> list = aTags.ToList();
 
-			//Console.WriteLine(pets[0]);
-
-			//msg = "Pets currently active in your Garrison's Managerie this week are:\n\n**" + pets[0] + "**\n\n**" + pets[1] + "**\n\n**" + pets[2] + "**";
-
-			//await Context.Channel.SendMessageAsync(msg);
+			return list;
 		}
 
-
-		public async Task CheckVHBosses()
+		public List<string> GetAttributeValue(string xpath, string attribute)
 		{
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
 
-			string sql;
-			SQLiteCommand command;
+			var aTags = doc.DocumentNode.SelectNodes(xpath);
 
-			List<string> dbVhBossesList = new List<string>();
+			List<string> list = new List<string>();
 
-			sql = "SELECT bossname FROM vhbosses";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			foreach (var aTag in aTags)
 			{
-				dbVhBossesList.Add(reader["bossname"].ToString());
-			}
-
-			string[] vhBosses = { util.GetLine("US-violethold-1", "test.txt"), util.GetLine("US-violethold-2", "test.txt"), util.GetLine("US-violethold-3", "test.txt") }; //need to update to find all!
-
-			Console.WriteLine(DateTime.Now + " - Updating Violet Hold Bosses...");
-
-			sql = "DELETE FROM vhbosses";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			int i = 0;
-
-			foreach (string boss in vhBosses)
-			{
-				if (boss != "No results found...")
+				if (aTag != null)
 				{
-					string[] words = boss.Split('>');
-					vhBosses[i] = words[1].Replace("</a", "");
-
-					sql = "INSERT INTO vhbosses (bossname) VALUES ('" + vhBosses[i].Replace("'", "''") + "')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-
-					i++;
+					log.Info(aTag.Attributes[attribute].Value);
+					list.Add(aTag.Attributes[attribute].Value);
 				}
 			}
-
-			//msg = "Current bosses active in the Violet Hold this week are:\n\n**" + vhBosses[0] + "**\n\n**" + vhBosses[1] + "**\n\n**" + vhBosses[2] + "**";
-
-			//await Context.Channel.SendMessageAsync(msg);
-
-			int j = 0;
-
-			foreach (string boss in dbVhBossesList)
-			{
-				if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
-				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('vhbosses')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
-				}
-				j++;
-			}
-
-			m_dbConnection.Close();
+			return list;
 		}
 
-
-		public async Task CheckDailyReset()
+		public async Task CheckWithHapOLD(string htmlTag, string attributeA, string attributeB, string value, string attributeC, int number = 0)
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
 
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
+			var aTags = doc.DocumentNode.SelectNodes("//" + htmlTag + "[contains(@" + attributeA + ",'" + value + "')]");
 
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbDailyResetList = new List<string>();
-
-			sql = "SELECT time FROM dailyreset";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			if (aTags != null)
 			{
-				dbDailyResetList.Add(reader["time"].ToString());
+				foreach (var aTag in aTags)	
+				{
+					if (aTag.InnerText != "")
+					{
+						log.Info(aTag.InnerText);
+						if (number != 0) break;
+					}
+
+					if (attributeB != null)
+					{
+						log.Info(aTag.Attributes[attributeB].Value);
+					}
+				}
+
+				if (attributeC != null)
+				{
+					aTags = doc.DocumentNode.SelectNodes("//" + htmlTag + "[contains(@" + attributeA + ",'" + value + "')]/../script");
+
+					foreach (var aTag in aTags)
+					{
+						log.Info(aTag.InnerText);
+					}
+				}
 			}
 
-			string msg = "";
+			return;
 
-			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+		}
 
-			Console.WriteLine(DateTime.Now + " - Updating daily reset...");
+		public async Task CheckWithHapAttribute(string htmlTag, string attributeA, string attributeB, string value = null)
+		{
+			var doc = new HtmlDocument();
+			doc.Load("test.txt");
 
-			sql = "DELETE FROM dailyreset";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
+			var aTags = doc.DocumentNode.SelectNodes("//" + htmlTag + "[contains(@" + attributeA + ",'" + value + "')]");
 
-			string dailyReset = util.GetLine("tiw-timer-US", "test.txt");
-			//Console.WriteLine(dailyReset);
-			string[] words = dailyReset.Split('"');
-			dailyReset = words[5];
-			string dailyResetEpochTime = dailyReset;
-
-			sql = "INSERT INTO dailyreset (time) VALUES ('" + dailyReset + "')";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			sql = "SELECT time FROM dailyreset";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			reader = command.ExecuteReader();
-
-			long epochTimeLeft = 0;
-
-			while (reader.Read())
+			if (aTags != null)
 			{
-				epochTimeLeft = Convert.ToInt64(reader["time"]) - epochTimeNow;
-
-				dailyReset = util.ConvertUnixEpochTime(Convert.ToInt64(reader["time"])).ToString();
-			}
-			string timeNow = util.ConvertUnixEpochTime(epochTimeNow).ToString();
-
-			TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-			string hoursLeft = t.ToString(@"hh");
-			string minutesLeft = t.ToString(@"mm").TrimStart('0');
-			if (hoursLeft != "00")
-			{
-				hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+				foreach (var aTag in aTags)
+				{
+					//if (aTag.Attributes["id"].Value == "US-emissary-1")
+					//{
+					log.Info(aTag.Attributes[attributeB].Value);
+					//log.Info(aTag.InnerText);
+					//}
+				}
 			}
 			else
 			{
-				hoursLeft = "";
+				log.Info("TAG IS NULL");
+			}
+		}
+
+		public List<string> GetDBResults(string column, string table)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			List<string> dbResults = new List<string>();
+
+			sql = "SELECT " + column + " FROM " + table;
+			command = new SQLiteCommand(sql, m_dbConnection);
+
+			SQLiteDataReader reader = command.ExecuteReader();
+
+			while (reader.Read())
+			{
+				dbResults.Add(reader[column].ToString());
 			}
 
-			sql = "UPDATE dailyreset SET timeleft = '" + hoursLeft + minutesLeft + " minutes' WHERE id = 1";
+			m_dbConnection.Close();
+
+			return dbResults;
+		}
+
+		public void DBDropTable(string table)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			sql = "DELETE FROM " + table;
 			command = new SQLiteCommand(sql, m_dbConnection);
 			command.ExecuteNonQuery();
 
-			//Console.WriteLine(dailyReset);
-			//Console.WriteLine(timeNow);
-
-			msg = "There is **" + hoursLeft + minutesLeft + " minutes** remaining until dailies are reset.\n\n Dailies reset at **" + dailyReset + "**.";
-
-			if (dbDailyResetList[0] != dailyResetEpochTime)
-			{
-				sql = "INSERT INTO tablestoalert (tablename) VALUES ('dailyreset')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-			}
-
-			//await Context.Channel.SendMessageAsync(msg);
+			m_dbConnection.Close();
 		}
 
+		public void InsertToDB(string columnOne, string valueOne, string columnTwo = null, string valueTwo = null, string columnThree = null, string valueThree = null, string table = null)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			string columns = columnOne;
+			string values = "'" + valueOne + "'";
+
+			if (columnTwo != null)
+			{
+				columns += ", " + columnTwo;
+				values += ", '" + valueTwo + "'";
+			}
+
+			if (columnThree != null)
+			{
+				columns += ", " + columnThree;
+				values += ", '" + valueThree + "'";
+			}
+
+			sql = "INSERT INTO " + table + " (" + columns + ") VALUES (" + values + ")";
+
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+		}
+
+		public void UpdateDBRecord(string columnOne, string valueOne, string columnTwo = null, string valueTwo = null, string columnThree = null, string valueThree = null, string whereColumn = null, string whereValue = null, string table = null)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			string setValues = columnOne + " = '" + valueOne + "'";
+
+			if (columnTwo != null)
+			{
+				setValues += ", " + columnTwo + " = '" + valueTwo + "'";
+			}
+
+			if (columnThree != null)
+			{
+				setValues += ", " + columnThree + " = '" + valueThree + "'";
+			}
+		
+
+			sql = "UPDATE " + table + " SET " + setValues + " WHERE " + whereColumn + " = " + whereValue;
+
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+		}
+
+#region WoW Head Checks
+		public async Task CheckEmissaries()
+		{
+			try
+			{
+				log.Debug("Running CheckEmissaries");
+				List<string> dbEmissariesList = GetDBResults("name", "emissaries");
+				List<string> dbTimeLeftList = GetDBResults("timeleft", "emissaries");
+
+				List<string> emissariesList = GetInnerText("//a[contains(@id,'US-emissary-')]");
+				List<string> timeLeftList = GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
+
+				if (emissariesList.Count == 0) throw new Exception("No emissaries were returned");
+
+				string[] timeLeftArray = timeLeftList.ToArray();
+
+				int i = 0;
+				foreach (string time in timeLeftArray)
+				{
+					string[] split = time.Split('"');
+					timeLeftArray[i] = split[1].Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
+					log.Debug(timeLeftArray[i]);
+					i++;
+				}
+
+				log.Debug("Updating emissaries");
+
+				DBDropTable("emissaries");
+
+				int j = 0;
+				foreach (string time in timeLeftArray)
+				{
+					log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
+					InsertToDB("name", emissariesList[j], "timeleft", timeLeftArray[j], null, null, "emissaries");
+					j++;
+				}
+
+				int k = 0;
+				foreach (string emissary in dbEmissariesList)
+				{
+					if (emissary != emissariesList[k] || dbEmissariesList.Count != emissariesList.Count)
+					{
+						InsertToDB("tablename", "emissaries", null, null, null, null, "tablestoalert");
+						break;
+					}
+					k++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Emissaries from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
+		}
+
+		public async Task CheckMenagerie()
+		{
+			try
+			{
+				log.Debug("Running CheckMenagerie");
+				List<string> dbPetNameList = GetDBResults("petname", "menagerie");
+				List<string> petsList = GetInnerText("//a[contains(@id,'US-menagerie-')]");
+
+				if (petsList.Count == 0) throw new Exception("No pets were returned");
+
+				string[] pets = petsList.ToArray();
+
+				DBDropTable("menagerie");
+
+				int i = 0;
+				foreach (string pet in pets)
+				{
+					//log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
+					InsertToDB("petname", pets[i], null, null, null, null, "menagerie");
+					i++;
+				}
+
+				int j = 0;
+				foreach (string petname in dbPetNameList)
+				{
+					if (petname != pets[j] || dbPetNameList.Count != pets.Length)
+					{
+						InsertToDB("tablename", "menagerie", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Menagerie from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
+		}
+
+		public async Task CheckVHBosses()
+		{
+			try
+			{
+				log.Debug("Running CheckVHBosses");
+				List<string> dbVhBossesList = GetDBResults("bossname", "vhbosses");
+				List<string> vhBossesList = GetInnerText("//a[contains(@id,'US-violethold-')]");
+				string[] vhBosses = vhBossesList.ToArray();
+
+				if (vhBossesList.Count == 0) throw new Exception("No Violet Hold bosses were returned");
+
+				DBDropTable("vhbosses");
+
+				int i = 0;
+				foreach (string boss in vhBosses)
+				{
+					InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "vhbosses");
+					i++;
+				}
+
+				int j = 0;
+				foreach (string boss in dbVhBossesList)
+				{
+					if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
+					{
+						InsertToDB("tablename", "vhbosses", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Violet Hold Bosses from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
+		}
+
+		public async Task CheckDailyReset()
+		{
+			try
+			{
+				log.Debug("Running CheckDailyReset");
+				List<string> dbDailyResetList = GetDBResults("time", "dailyreset");
+				List<string> dailyResetList = GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp");
+
+				if (dailyResetList.Count == 0) throw new Exception("No daily reset times were returned");
+
+				long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+				DBDropTable("dailyreset");
+
+				string dailyReset = "";
+				string dailyResetEpochTime = dailyResetList.FirstOrDefault();
+
+				long epochTimeLeft = 0;
+
+				epochTimeLeft = Convert.ToInt64(dailyResetEpochTime) - epochTimeNow;
+
+				dailyReset = util.ConvertUnixEpochTime(Convert.ToInt64(dailyResetEpochTime)).ToString();
+
+				string timeNow = util.ConvertUnixEpochTime(epochTimeNow).ToString();
+
+				TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+				string hoursLeft = t.ToString(@"hh");
+				string minutesLeft = t.ToString(@"mm").TrimStart('0');
+				if (hoursLeft != "00")
+				{
+					hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+				}
+				else
+				{
+					hoursLeft = "";
+				}
+
+				InsertToDB("time", dailyResetEpochTime, "timeleft", hoursLeft + minutesLeft + " minutes", null, null, "dailyreset");
+
+				if (dbDailyResetList[0] != dailyResetEpochTime)
+				{
+					InsertToDB("tablename", "dailyreset", null, null, null, null, "tablestoalert");
+				}
+			}
+			catch(Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Daily Reset from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
+		}
 
 		public async Task CheckWowToken()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
+			try
+			{
+				log.Debug("Running CheckWowToken");
+				List<string> tokenGoldList = GetInnerText("//span[contains(@class,'moneygold')]", 1);
+				string tokenGold = tokenGoldList.FirstOrDefault();
 
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
+				if (tokenGoldList.Count == 0) throw new Exception("No WoW token prices were returned");
 
-			string sql;
-			SQLiteCommand command;
+				DBDropTable("wowtoken");
 
-			//string msg = "";
-
-			string tokenGold = util.GetLine("tiw-group-wowtoken", "test.txt");
-
-			//Console.WriteLine(tokenGold);
-
-			Console.WriteLine(DateTime.Now + " - Updating wow token...");
-
-			sql = "DELETE FROM wowtoken";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			string[] words = tokenGold.Split('>');
-			tokenGold = words[9].Replace("</span", "");
-
-			sql = "INSERT INTO wowtoken (price) VALUES ('" + tokenGold.Replace("'", "''") + "')";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-			//Console.WriteLine(tokenGold);
-
-			//msg = "WoW Tokens are currently worth **" + tokenGold + "** gold.";
-
-			//await Context.Channel.SendMessageAsync(msg);
+				InsertToDB("price", tokenGold, null, null, null, null, "wowtoken");
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check WoW Tokens from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
 		}
-
 
 		public async Task CheckWorldBosses()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
-
-			//string msg = "Below are the current World Bosses that are active this week:\n\n";
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbWorldBossesList = new List<string>();
-
-			sql = "SELECT bossname FROM worldbosses";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			try
 			{
-				dbWorldBossesList.Add(reader["bossname"].ToString());
-			}
+				log.Debug("Running CheckWorldBosses");
+				List<string> dbWorldBossesList = GetDBResults("bossname", "worldbosses");
+				List<string> bosses = GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
+				string[] bossesArray = bosses.ToArray();
 
-			List<string> bosses = util.ReturnAllLines("US-epiceliteworld-", "test.txt");
+				if (bosses.Count == 0) throw new Exception("No World Bosses were returned");
 
-			string[] bossesArray = bosses.ToArray();
+				DBDropTable("worldbosses");
 
-			Console.WriteLine(DateTime.Now + " - Updating world bosses...");
-
-			sql = "DELETE FROM worldbosses";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			int i = 0;
-
-			foreach (string boss in bossesArray)
-			{
-				string[] words = boss.Split('>');
-				bossesArray[i] = words[1].Replace("</a", "");
-				//msg += "**" + bossesArray[i] + "**\n\n";
-
-				sql = "INSERT INTO worldbosses (bossname) VALUES ('" + bossesArray[i].Replace("'", "''") + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				i++;
-			}
-
-			int j = 0;
-
-			foreach (string bossname in dbWorldBossesList)
-			{
-				if (bossname != bossesArray[j] || dbWorldBossesList.Count != bossesArray.Length)
+				int i = 0;
+				foreach (string boss in bossesArray)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('worldbosses')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
+					InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "worldbosses");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string bossname in dbWorldBossesList)
+				{
+					if (bossname != bossesArray[j] || dbWorldBossesList.Count != bossesArray.Length)
+					{
+						InsertToDB("tablename", "worldbosses", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
 			}
-			//msg.TrimEnd('\n');
-
-			//Console.WriteLine(msg);
-
-			//await Context.Channel.SendMessageAsync(msg);
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check World Bosses from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
 		}
-
 
 		public async Task CheckWorldEvents()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
-
-			//string msg = "Below are the current World Events that are active this week:\n\n";
-
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbWorldEvents = new List<string>();
-
-			sql = "SELECT eventname FROM worldevents";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			try
 			{
-					dbWorldEvents.Add(reader["eventname"].ToString());
-			}
+				log.Debug("Running CheckWorldEvents");
+				List<string> dbWorldEvents = GetDBResults("eventname", "worldevents");
+				List<string> worldEvents = GetInnerText("//a[contains(@id,'US-holiday-')]"); ;
+				string[] worldEventsArray = worldEvents.ToArray();
 
-			List<string> worldEvents = util.ReturnAllLines("US-holiday-", "test.txt");
+				if (worldEvents.Count == 0) throw new Exception("No World Events were returned");
 
-			string[] worldEventsArray = worldEvents.ToArray();
+				DBDropTable("worldevents");
 
-			Console.WriteLine(DateTime.Now + " - Updating world events...");
-
-			sql = "DELETE FROM worldevents";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			int i = 0;
-
-			foreach (string worldEvent in worldEventsArray)
-			{
-				string[] words = worldEvent.Split('>');
-				worldEventsArray[i] = words[2].TrimStart(' ').Replace("</a", "");
-				//msg += "**" + worldEventsArray[i] + "**\n\n";
-
-				sql = "INSERT INTO worldevents (eventname) VALUES ('" + worldEventsArray[i].Replace("'", "''") + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				i++;
-			}
-
-			int j = 0;
-
-			foreach (string worldevent in dbWorldEvents)
-			{
-				if (worldevent != worldEventsArray[j] || dbWorldEvents.Count != worldEventsArray.Length)
+				int i = 0;
+				foreach (string worldEvent in worldEventsArray)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('worldevents')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
+					InsertToDB("eventname", worldEvent.Replace("'", "''"), null, null, null, null, "worldevents");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string worldevent in dbWorldEvents)
+				{
+					if (worldevent != worldEventsArray[j] || dbWorldEvents.Count != worldEventsArray.Length)
+					{
+						InsertToDB("tablename", "worldevents", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
 			}
-
-			//msg.TrimEnd('\n');
-
-			//await Context.Channel.SendMessageAsync(msg);
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check World Events from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
 		}
-
 
 		public async Task CheckXurios()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
-
-			//string msg = "This week Xur\'ios is selling the following for Curious Coins:\n\n";
-
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbXurios = new List<string>();
-
-			sql = "SELECT itemname FROM xurios";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			try
 			{
-				dbXurios.Add(reader["itemname"].ToString());
-			}
+				log.Debug("Running CheckXurios");
+				List<string> dbXurios = GetDBResults("itemname", "xurios");
+				List<string> xurios = GetInnerText("//a[contains(@id,'US-xurios-')]");
+				string[] xuriosArray = xurios.ToArray();
 
-			List<string> xurios = util.ReturnAllLines("US-xurios-", "test.txt");
+				if (xurios.Count == 0) throw new Exception("No Xurios items were returned");
 
-			string[] xuriosArray = xurios.ToArray();
+				DBDropTable("xurios");
 
-			Console.WriteLine(DateTime.Now + " - Updating Xur\'ios...");
-
-			sql = "DELETE FROM xurios";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			int i = 0;
-
-			foreach (string item in xuriosArray)
-			{
-				string[] words = item.Split('>');
-				xuriosArray[i] = words[2].TrimStart(' ').Replace("</a", "");
-				//if (xuriosArray[i] != "")
-				//{
-				//msg += "**" + xuriosArray[i] + "**\n\n";
-				//}
-
-				sql = "INSERT INTO xurios (itemname) VALUES ('" + xuriosArray[i].Replace("'", "''") + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				i++;
-			}
-
-			int j = 0;
-
-			foreach (string item in dbXurios)
-			{
-				if (item != xuriosArray[j] || dbXurios.Count != xuriosArray.Length)
+				int i = 0;
+				foreach (string item in xuriosArray)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('xurios')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
+					InsertToDB("itemname", item.Replace("'", "''"), null, null, null, null, "xurios");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string item in dbXurios)
+				{
+					if (item != xuriosArray[j] || dbXurios.Count != xuriosArray.Length)
+					{
+						InsertToDB("tablename", "xurios", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Xur'ios from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
-
 
 		public async Task CheckAffixes()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
-
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbAffixes = new List<string>();
-
-			sql = "SELECT affixname FROM dungeonaffixes";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			try
 			{
-				dbAffixes.Add(reader["affixname"].ToString());
-			}
+				log.Debug("Running CheckAffixes");
+				List<string> dbAffixes = GetDBResults("affixname", "dungeonaffixes");
+				List<string> mythicAffixesList = GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
+				string[] mythicAffixes = mythicAffixesList.ToArray();
 
-			List<string> mythicAffixesList = util.ReturnAllLines("US-mythicaffix-", "test.txt");
-			string[] mythicAffixes = mythicAffixesList.ToArray();
-			//string[] mythicAffixes = { util.GetLine("id=\"US-mythicaffix-1\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-2\"", "test.txt").TrimStart(), util.GetLine("id=\"US-mythicaffix-3\"", "test.txt").TrimStart() };
-			int[] affixNumbers = { 0, 0, 0 };
-			//string msg = "This week's Mythic+ Dungeon Affixes are:\n\n";
-			//Console.WriteLine(mythicAffixes[1]);
+				string[] affixNumbers = GetAttributeValue("//a[contains(@id,'US-mythicaffix-')]", "href").ToArray();
 
-			Console.WriteLine(DateTime.Now + " - Updating mythic+ dungeon affixes...");
+				if (mythicAffixesList.Count == 0) throw new Exception("No Mythic+ Affixes were returned");
 
-			sql = "DELETE FROM dungeonaffixes";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
+				DBDropTable("dungeonaffixes");
 
-			int i = 0;
-			int j = 1;
-
-			foreach (string affix in mythicAffixes)
-			{
-				string[] words = affix.Split('>');
-				//string[] cleanedWords = words[6].Split('<');
-
-				string[] numbers = words[0].Split('=');
-				//int cleanedNumber = Convert.ToInt32(numbers[2].TrimEnd('"'));
-
-				//Console.WriteLine(mythicAffixes[i]);
-				mythicAffixes[i] = words[2].Replace(" ", "").Replace("</a", "");
-				affixNumbers[i] = Convert.ToInt32(numbers[2].Replace("\" id", ""));
-
-				//Console.WriteLine(mythicAffixes[i]);
-				//Console.WriteLine(affixNumbers[i]);
-
-				j += 3;
-
-				sql = "INSERT INTO dungeonaffixes (affixname, affixnum, dungeonlevel) VALUES ('" + mythicAffixes[i].Replace("'", "''") + "', '" + affixNumbers[i] + "', '" + j + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				//msg += "**" + mythicAffixes[i] + "** - Mythic Keystone Level " + j + "+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[i] + ">\n\n";
-
-				i++;
-			}
-
-			int k = 0;
-
-			foreach (string affix in dbAffixes)
-			{
-				if (affix != mythicAffixes[k] || dbAffixes.Count != mythicAffixes.Length)
+				int i = 0;
+				int j = 1;
+				foreach (string affix in mythicAffixes)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('dungeonaffixes')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
+					j += 3;
+					InsertToDB("affixname", affix, "affixnum", affixNumbers[i].Replace("/affix=", ""), "dungeonlevel", j.ToString(), "dungeonaffixes");
+					i++;
 				}
-				k++;
+
+				int k = 0;
+				foreach (string affix in dbAffixes)
+				{
+					if (affix != mythicAffixes[k] || dbAffixes.Count != mythicAffixes.Length)
+					{
+						InsertToDB("tablename", "dungeonaffixes", null, null, null, null, "tablestoalert");
+						break;
+					}
+					k++;
+				}
 			}
-
-
-			//Console.WriteLine(mythicAffixes[0] + " " + affixNumbers[0]);
-			//Console.WriteLine(mythicAffixes[1] + " " + affixNumbers[1]);
-			//Console.WriteLine(mythicAffixes[2] + " " + affixNumbers[2]);
-
-			//msg = "This week's Mythic+ Dungeon Affixes are:\n\n**" + mythicAffixes[0] + "** - Mythic Keystone Level 4+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[0] + ">\n\n**" + mythicAffixes[1]; //+ "** - Mythic Keystone Level 7+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[1] + ">\n\n**" + mythicAffixes[2] + "** - Mythic Keystone Level 10+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[2] + ">";
-			//await Context.Channel.SendMessageAsync(msg);
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Mythic+ Affixes from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
 		}
-
 
 		public async Task CheckInvasions()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
-
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbAssaults = new List<string>();
-
-			sql = "SELECT zonename FROM legionassaults";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			try
 			{
-				dbAssaults.Add(reader["zonename"].ToString());
-			}
+				log.Debug("Running CheckInvasions");
+				List<string> dbAssaults = GetDBResults("zonename", "legionassaults");
+				List<string> legionAssaultsList = GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]");
+				string legionAssaultsLine = legionAssaultsList.FirstOrDefault();
 
-			string legionAssaultsLine = util.GetLine("<script>$WH.news.addAssaultDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
-			//string msg = "";
+				if (legionAssaultsList.Count == 0) throw new Exception("No Legion Assaults were returned");
 
-			Console.WriteLine(legionAssaultsLine);
+				string[] words = legionAssaultsLine.Split(':');
 
-			string[] words = legionAssaultsLine.Split(':');
+				string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
+				int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});", ""));
+				log.Debug(length);
+				string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
 
-			string[] upcomingAssaultsStr = words[13].TrimStart('[').Replace("],\"length\"", "").Split(',');
-			int length = Convert.ToInt32(words[14].Replace(" ", "").Replace("});</script></div>", ""));
-			string zoneName = words[12].Replace("\"", "").Replace(",upcoming", "");
+				List<long> upcomingTimesEpoch = new List<long>();
 
-			//Console.WriteLine(upcomingAssaultsStr[0]);
-			//Console.WriteLine(length);
-
-			List<long> upcomingTimesEpoch = new List<long>();
-
-			int i = 0;
-
-			foreach (string time in upcomingAssaultsStr)
-			{
-				upcomingTimesEpoch.Add(Convert.ToInt64(time));
-
-				//Console.WriteLine(time);
-			}
-
-			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-
-			//Console.WriteLine(length);
-
-			Console.WriteLine(DateTime.Now + " - Updating legion invasions...");
-
-			sql = "DELETE FROM legionassaults";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			string hoursLeft = "";
-			string minutesLeft = "";
-			string zone = "";
-
-			int doOnce = 0;
-
-			foreach (long epochTime in upcomingTimesEpoch)
-			{
-				long tempEpochTime = epochTime + (length);
-
-				if (epochTimeNow < tempEpochTime)
+				int i = 0;
+				foreach (string time in upcomingAssaultsStr)
 				{
-					if (epochTimeNow > epochTime)
+					upcomingTimesEpoch.Add(Convert.ToInt64(time));
+				}
+
+				long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+				DBDropTable("legionassaults");
+
+				string hoursLeft = "";
+				string minutesLeft = "";
+				string zone = "";
+
+				foreach (long epochTime in upcomingTimesEpoch)
+				{
+					InsertToDB("assaulttime", epochTime.ToString(), "timeleft", hoursLeft + minutesLeft, "length", length.ToString(), "legionassaults");
+				}
+
+				int j = 1;
+				foreach (long epochTime in upcomingTimesEpoch)
+				{
+					long tempEpochTime = epochTime + (length);
+
+					if (epochTimeNow < tempEpochTime)
 					{
-						/*long epochTimeLeft = (tempEpochTime - epochTimeNow);
-						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-						hoursLeft = t.ToString(@"hh");
-						minutesLeft = t.ToString(@"mm").TrimStart('0');
-						if (hoursLeft != "00")
+						if (epochTimeNow > epochTime)
 						{
-							hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+							if (zoneName != "" || zoneName != "null")
+							{
+								zone = zoneName;
+							}
+							else
+							{
+								zone = "A zone";
+							}
+							long epochTimeLeft = (tempEpochTime - epochTimeNow);
+							TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+							hoursLeft = t.ToString(@"hh");
+							minutesLeft = t.ToString(@"mm").TrimStart('0');
+							if (hoursLeft != "00")
+							{
+								hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+							}
+							else
+							{
+								hoursLeft = "";
+							}
 						}
-						else
-						{
-							hoursLeft = "";
-						} */
-						//zone = "";
-						/*
-						if (zoneName != "")
-						{
-							zone = zoneName;
-						}
-						else
-						{
-							zone = "A zone";
-						}
-						*/
-
-
-						//msg = "__**" + zone + "**__** is currently being assaulted by the Legion!**__**\n" + hoursLeft + minutesLeft + " minutes**__** remaining...**\n";
-						//Console.WriteLine(zone + " is being assaulted by the legion! " + hoursLeft + " hours and " + minutesLeft + " minutes remaining...");
 					}
-					else
+					if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
 					{
-						while (doOnce < 1)
-						{
-							//msg += "\n\nThe next invasion times are as follows: \n";
-							doOnce++;
-						}
-
-
-
-						//msg += "\n" + util.ConvertUnixEpochTime(epochTime).ToString() + "\n";
-						//Console.WriteLine(util.ConvertUnixEpochTime(epochTime));
+						UpdateDBRecord("zonename", zone.Replace("'", "''"), "timeleft", hoursLeft + minutesLeft, null, null, "id", j.ToString(), "legionassaults");
 					}
-
+					j++;
 				}
-				sql = "INSERT INTO legionassaults (assaulttime, timeleft, length) VALUES ('" + epochTime + "', '" + hoursLeft + minutesLeft + "', '" + length + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
 
-
-			}
-
-			int j = 1;
-
-			foreach (long epochTime in upcomingTimesEpoch)
-			{
-				long tempEpochTime = epochTime + (length);
-
-				if (epochTimeNow < tempEpochTime)
+				int k = 0;
+				foreach (string name in dbAssaults)
 				{
-					if (epochTimeNow > epochTime)
+					if (!string.IsNullOrEmpty(name) && name != zoneName)
 					{
-						//zone = "";
-						if (zoneName != "")
-						{
-							zone = zoneName;
-
-						}
-						else
-						{
-							zone = "A zone";
-
-						}
-						long epochTimeLeft = (tempEpochTime - epochTimeNow);
-						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-						hoursLeft = t.ToString(@"hh");
-						minutesLeft = t.ToString(@"mm").TrimStart('0');
-						if (hoursLeft != "00")
-						{
-							hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
-						}
-						else
-						{
-							hoursLeft = "";
-						}
-
+						InsertToDB("tablename", "legionassaults", null, null, null, null, "tablestoalert");
 					}
-
-					//goto NextEpochTime;
+					k++;
 				}
-				if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
-				{
-					
-					Console.WriteLine(zone);
-					Console.WriteLine(j);
-					sql = "UPDATE legionassaults SET zonename = '" + zone.Replace("'", "''") + "', timeleft = '" + hoursLeft + minutesLeft + "' WHERE id = " + j;
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-
-				}
-
-				//goto NextEpochTime;
-			//NextEpochTime:
-				j++;
 			}
-			//await Context.Channel.SendMessageAsync(msg);
-
-			int k = 0;
-
-			foreach (string name in dbAssaults)
+			catch (Exception ex)
 			{
-				if (name != null && name != "" && name != zoneName)
-				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('legionassaults')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
-				}
-				k++;
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Legion Invasions from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
-
 		}
-
 
 		public async Task CheckBrokenShoreBuildings()
 		{
-			//Utilities util = new Utilities();
-			//util.DownloadNewWowHead();
-
-			//string[] buildings = { util.GetLineAfterNum("data-region=\"US\" data-building=\"1\"", "test.txt", 10), util.GetLineAfterNum("data-region=\"US\" data-building=\"2\"", "test.txt", 10), util.GetLineAfterNum("data-region=\"US\" data-building=\"3\"", "test.txt", 10) };
-			//string[] buildingStates = { util.GetLineAfterNum("data-region=\"US\" data-building=\"1\"", "test.txt", 8), util.GetLineAfterNum("data-region=\"US\" data-building=\"2\"", "test.txt", 8), util.GetLineAfterNum("data-region=\"US\" data-building=\"3\"", "test.txt", 8) };
-
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			List<string> dbBrokenShore = new List<string>();
-
-			sql = "SELECT buildingstate FROM brokenshorebuildings";
-			command = new SQLiteCommand(sql, m_dbConnection);
-
-			SQLiteDataReader reader = command.ExecuteReader();
-
-			while (reader.Read())
+			try
 			{
-				dbBrokenShore.Add(reader["buildingstate"].ToString());
-			}
+				log.Debug("Running CheckBrokenShoreBuildings");
+				List<string> dbBrokenShore = GetDBResults("buildingstate", "brokenshorebuildings");
 
-			string[] buildings = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-progress", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-progress", "test.txt") };
-			string[] buildingStates = { util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"1\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"2\"", "class=\"tiw-bs-status-state", "test.txt"), util.BrokenShoreBuildingGetLine("data-region=\"US\" data-building=\"3\"", "class=\"tiw-bs-status-state", "test.txt") };
+				string[] buildingNames = GetInnerText("//div[contains(@data-region,'US')]/../../div/a").ToArray();
+				string[] buildingProgress = GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title").ToArray();
+				string[] buildingStates = GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]").ToArray();
 
-			//Console.WriteLine(buildings[0]);
-			//Console.WriteLine(buildingStates[0]);
-			//Console.WriteLine(buildings[1]);
-			//Console.WriteLine(buildingStates[1]);
-			//Console.WriteLine(buildings[2]);
-			//Console.WriteLine(buildingStates[2]);
+				GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
+				GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
+				GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
 
-			string msg = "";
+				if (buildingNames.Length == 0) throw new Exception("No Broken Shore Buildings were returned");
 
-			//string mageTowerPercentage = util.GetLineAfterNum("Mage Tower", "test.txt", 8);
-			//string commandCenterPercentage = util.GetLineAfterNum("Command Center", "test.txt", 8);
-			//string netherDisruptorPercentage = util.GetLineAfterNum("Nether Disruptor", "test.txt", 8);
+				DBDropTable("brokenshorebuildings");
 
-			Console.WriteLine(DateTime.Now + " - Updating Broken Shore buildings...");
-
-			sql = "DELETE FROM brokenshorebuildings";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			string buildingName = "";
-
-			int i = 0;
-
-			foreach (string building in buildings)
-			{
-				switch (i + 1)
+				int i = 0;
+				foreach (string building in buildingNames)
 				{
-					case 1:
-						buildingName = "Mage Tower";
-						break;
-					case 2:
-						buildingName = "Command Center";
-						break;
-					case 3:
-						buildingName = "Nether Disruptor";
-						break;
+					InsertToDB("buildingname", buildingNames[i], "buildingstate", buildingStates[i], "buildingpercentage", buildingProgress[i], "brokenshorebuildings");
+					i++;
 				}
 
-				string[] words = building.Split('>');
-
-				Console.WriteLine(buildings[i]);
-				buildings[i] = words[4].Replace("</span", "");
-
-				sql = "INSERT INTO brokenshorebuildings (buildingname, buildingpercentage) VALUES ('" + buildingName + "', '" + buildings[i] + "')";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				i++;
-			}
-
-			int j = 0;
-
-			foreach (string buildingState in buildingStates)
-			{
-				string[] words = buildingState.Split('>');
-				buildingStates[j] = words[2].Replace("</div", "");
-
-				int id = j + 1;
-
-				sql = "UPDATE brokenshorebuildings SET buildingstate = '" + buildingStates[j] + "' WHERE id = '" + id + "'";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-
-				j++;
-			}
-
-			/*
-			Console.WriteLine(buildings[0]);
-			Console.WriteLine(buildingStates[0]);
-			Console.WriteLine(buildings[1]);
-			Console.WriteLine(buildingStates[1]);
-			Console.WriteLine(buildings[2]);
-			Console.WriteLine(buildingStates[2]);
-			*/
-			//msg = "Current Broken Shore buildings stats are as follows: \n\n__**Mage Tower**__\n" + buildingStates[0] + "\n" + buildings[0] + "\n\n__**Command Center**__\n" + buildingStates[1] + "\n" + buildings[1] + "\n\n__**Nether Disruptor**__\n" + buildingStates[2] + "\n" + buildings[2];
-
-			//await Context.Channel.SendMessageAsync(msg);
-			int k = 0;
-
-			foreach (string state in dbBrokenShore)
-			{
-				if (state != buildingStates[k])
+				int k = 0;
+				foreach (string state in dbBrokenShore)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('brokenshorebuildings')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-					break;
-				}
-				k++;
-			}
-		}
-
-
-
-		/* Moved to CommandModules
-		public Task CheckInvasionTimes()
-		{
-			WebClient webClient = new WebClient();
-			string htmlCode = webClient.DownloadString("http://wowhead.com");
-			System.IO.File.WriteAllText(@"test.txt", htmlCode);
-			string legionAssaultsLine = GetLine("<script>$WH.news.addInvasionDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
-
-			char[] charArray = legionAssaultsLine.ToCharArray();
-
-			string cleanLegionAssaults = "";
-
-			int i = 0;
-
-			while (charArray[i].ToString() == " ")
-			{
-				i++;
-			}
-
-			for (int j = i; j < charArray.Count(); j++)
-			{
-				cleanLegionAssaults += charArray[j].ToString();
-			}
-
-			Console.WriteLine(cleanLegionAssaults);
-
-			string[] words = cleanLegionAssaults.Split(',');
-
-			foreach (string word in words)
-			{
-				//Console.WriteLine(word);
-			}
-
-			//string name = words[2].Remove(0, 7);
-			//string url = words[3];
-			string zoneName = words[5].Remove(0, 11).Trim('"');
-			long[] upcomingTimesEpoch = { Convert.ToInt64(words[6].Remove(0, 12)), Convert.ToInt64(words[7]), Convert.ToInt64(words[8]), Convert.ToInt64(words[9]), Convert.ToInt64(words[10].Trim(']')) };
-
-			//char[] trimChars = { '}', ')', ';', '<', '/', 's', 'c', 'r', 'i', 'p', 't' };
-
-			int length = Convert.ToInt32(words[11].Remove(0, 9).Remove(5, 12));
-			//string cleanLength = length.TrimEnd(trimChars);
-
-			//Console.WriteLine(upcomingTimesEpoch[4]);
-
-			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-
-			Console.WriteLine(length);
-
-			foreach (long epochTime in upcomingTimesEpoch)
-			{
-				long tempEpochTime = epochTime + (length);
-				//Console.WriteLine(tempEpochTime);
-				if (epochTimeNow < tempEpochTime)
-				{
-					if (epochTimeNow > epochTime)
+					if (state != buildingStates[k])
 					{
-						long epochTimeLeft = (tempEpochTime - epochTimeNow);
-						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-						string hoursLeft = t.ToString(@"hh").TrimStart('0'); 
-						string minutesLeft = t.ToString(@"mm").TrimStart('0');
-						string zone = "";
-						if (zoneName != "")
-						{
-							zone = zoneName;
-						}
-						else 
-						{
-							zone = "A zone";
-						}
-						Console.WriteLine(zone + " is being assaulted by the legion! " + hoursLeft + " hours and " + minutesLeft + " minutes remaining...");
+						InsertToDB("tablename", "brokenshorebuildings", null, null, null, null, "tablestoalert");
+						break;
 					}
-					else
-					{
-						Console.WriteLine(ConvertUnixEpochTime(epochTime));
-					}
-				}
-				//Console.WriteLine(epochTime);
-			}
-
-			//System.IO.File.WriteAllText(@"test.txt", htmlCode);
-
-			//Console.WriteLine(htmlCode);
-			/* Need updated chromium/chromedriver.exe
-			 * IWebDriver driver = new ChromeDriver(@"C:\Users\Kurt\AppData\Local\Google\Chrome SxS\Application");
-			driver.Navigate().GoToUrl("https://wowhead.com");
-
-			return Task.FromResult(false);
-		}
-		*/
-		/*
-		DateTime ConvertUnixEpochTime(long seconds)
-		{
-			long convertedSeconds = Convert.ToInt64(seconds);
-			DateTime time = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-			return time.AddSeconds(seconds).ToLocalTime();
-		}
-
-		string GetLine(string keyword, string file)
-		{
-			string[] textLines = File.ReadAllLines(file);
-			List<string> results = new List<string>();
-
-			foreach (string line in textLines)
-			{
-				if (line.Contains(keyword))
-				{
-					results.Add(line);
-					return line;
+					k++;
 				}
 			}
-
-			/*
-			foreach (string l in results)
+			catch (Exception ex)
 			{
-				//Console.WriteLine(l);
-				return l;
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Broken Shore Buildings from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
-
-			//if (results.Count < 1)
-			return "No invasions found...";
-
 		}
-		*/
-
-		/*
-		string GetLine(string text, int lineNo)
-		{
-			string[] lines = text.Replace("\r", "").Split('\n');
-			return lines.Length >= lineNo ? lines[lineNo - 1] : null;
-		}
-		*/
+#endregion
+#endregion //Methods
 	}
 }
