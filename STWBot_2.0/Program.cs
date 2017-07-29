@@ -19,23 +19,14 @@ namespace STWBot_2
 	public class MainClass
 	{
 		private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
 		private CommandService commands;
 		public DiscordSocketClient client;
-
 		private Utilities util = new Utilities();
 		private Wow commander = new Wow();
-
 		SQLiteConnection m_dbConnection;
-
 		private Token tokenRef = new Token();
-		//private IServiceProvider map;
-		//private Discord map;
 		public IServiceProvider map;
-
 		public static MainClass instance = null;
-
-		//string notFound = "No results found...";
 
 		public static void Main(string[] args) => new MainClass().MainAsync().GetAwaiter().GetResult();
 
@@ -56,40 +47,49 @@ namespace STWBot_2
 #region InitalStartup
 			util.DownloadNewWowHead();
 
+			log.Debug("");
+			log.Debug("---------- START INTIAL STARTUP SELF TEST ----------");
+			log.Debug("     ----- Testing Emissaries -----");
+			GetInnerText("//a[contains(@id,'US-emissary-')]");
+			GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
+			log.Debug("     ----- Testing Menagerie -----");
+			GetInnerText("//a[contains(@id,'US-menagerie-')]");
+			log.Debug("     ----- Testing Mythic+ Affixes -----");
+			GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
+			log.Debug("     ----- Testing World Bosses -----");
+			GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
+			log.Debug("     ----- Testing World Events -----");
+			GetInnerText("//a[contains(@id,'US-holiday-')]");
+			log.Debug("     ----- Testing Xur'ios -----");
+			GetInnerText("//a[contains(@id,'US-xurios-')]");
+			log.Debug("     ----- Testing Violet Hold Bosses -----");
+			GetInnerText("//a[contains(@id,'US-violethold-')]");
+			log.Debug("     ----- Testing Daily Reset -----");
+			GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp");
+			log.Debug("     ----- Testing WoW Token -----");
+			GetInnerText("//span[contains(@class,'moneygold')]", 1);
+			log.Debug("     ----- Testing Broken Shore Buildings -----");
+			GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
+			GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
+			GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
+			log.Debug("     ----- Testing Legion Assaults -----");
+			GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]");
+			log.Debug("---------- END INTIAL STARTUP SELF TEST ----------");
+			log.Debug("");
+
 			await InstallCommands();
 			await ConnectToDB();
 			await CheckEmissaries2();
 			await CheckMenagerie2();
-			await CheckVHBosses();
-			await CheckDailyReset();
-			await CheckWowToken();
-			await CheckWorldBosses();
-			await CheckWorldEvents();
-			await CheckXurios();
-			await CheckAffixes();
-			await CheckInvasions();
-			await CheckBrokenShoreBuildings();
-			//await CheckInvasionTimes();
-			//await commander.Invasion();
-			//*/
-			GetInnerText("//a[contains(@id,'US-emissary-')]");
-			GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
-			//"//a[contains(@id,'US-emissary-')]"
-			//await CheckWithHap("a", "id", null, "US-emissary-", "test");
-			GetInnerText("//a[contains(@id,'US-menagerie-')]");
-			GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
-			GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
-			GetInnerText("//a[contains(@id,'US-holiday-')]");
-			GetInnerText("//a[contains(@id,'US-xurios-')]");
-			GetInnerText("//a[contains(@id,'US-violethold-')]");
-			GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp");
-			GetInnerText("//span[contains(@class,'moneygold')]", 1);
-			GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
-			GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
-			GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
-			GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]");
-
-
+			await CheckVHBosses2();
+			await CheckDailyReset2();
+			await CheckWowToken2();
+			await CheckWorldBosses2();
+			await CheckWorldEvents2();
+			await CheckXurios2();
+			await CheckAffixes2();
+			await CheckInvasions2();
+			await CheckBrokenShoreBuildings2();
 
 			client.Log += Log;
 			client.JoinedGuild += JoinedNewGuild;
@@ -100,15 +100,14 @@ namespace STWBot_2
 			await client.LoginAsync(TokenType.Bot, tokenRef.token);
 			await client.StartAsync();
 
-#endregion
 
-#region Hide
-			//await 
+
+
 
 			client.SetGameAsync("Testing");
 
 			Timer t = new Timer();
-			t.Interval = 600000; //In milliseconds here
+			t.Interval = 600000; //In milliseconds here //600000
 			t.AutoReset = true; //Stops it from repeating
 			t.Elapsed += new ElapsedEventHandler(TimerElapsed);
 			t.Start();
@@ -116,6 +115,7 @@ namespace STWBot_2
 			// Block this task until the program is closed (infinite delay)
 			await Task.Delay(-1);
 		}
+#endregion
 
 		public async Task InstallCommands()
 		{
@@ -144,16 +144,6 @@ namespace STWBot_2
 			if (!result.IsSuccess)
 				await context.Channel.SendMessageAsync(result.ErrorReason);
 		}
-
-		/*
-		private async Task MessageReceived(SocketMessage message)
-		{
-			if (message.Content == "!ping")
-			{
-				await message.Channel.SendMessageAsync("Pong!");
-			}
-		}
-		*/
 
 		public async Task ConnectToDB()
 		{
@@ -185,7 +175,142 @@ namespace STWBot_2
 			m_dbConnection.Close();
 		}
 
+		public async Task CheckWowhead()
+		{
+			util.DownloadNewWowHead();
 
+			//await AddToDB();
+		}
+
+		private Task UserJoined(SocketGuildUser user)
+		{
+			IRole membersRole = client.GetGuild(303997236482801670).GetRole(305921894513770499);
+			IRole pugsRole = client.GetGuild(303997236482801670).GetRole(306107573277425664);
+
+			Console.WriteLine(user.Id);
+
+			//SocketUser newUser = client.GetUser(user.Id).;
+			//client.GetGuild().GetVoiceChannel().Users.
+
+			//if (newUser..VoiceChannel.Id == client.GetChannel(306107185145053194).Id)
+			//{
+			Console.WriteLine("PUG!");
+			user.AddRoleAsync(pugsRole);
+			//}
+			//else
+			//{
+			Console.WriteLine("MEMBER!");
+			user.AddRoleAsync(membersRole);
+			//}
+
+			return Task.FromResult(true);
+		}
+
+		private Task Log(LogMessage msg)
+		{
+			log.Info(msg.ToString());
+			return Task.FromResult(false);
+		}
+
+		private Task JoinedNewGuild(SocketGuild guild)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "INSERT INTO autoalerts (value, guildid) VALUES ('false', '" + guild.Id + "')";
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			return null;
+		}
+
+		private Task LeftGuild(SocketGuild guild)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+			m_dbConnection.Open();
+
+			string sql;
+			SQLiteCommand command;
+
+			sql = "DELETE FROM autoalerts WHERE guildid = '" + guild.Id + "'";
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			return null;
+		}
+
+		public async void TimerElapsed(object sender, ElapsedEventArgs e)
+		{
+			if (client.ConnectionState == ConnectionState.Connected)
+			{
+				//Console.WriteLine("FIRED!");
+				log.Debug("Timer has elapsed - firing checks");
+				m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
+
+
+				string sql;
+				SQLiteCommand command;
+
+				List<string> tablenames = new List<string>();
+
+				await CheckWowhead();
+
+				await CheckEmissaries2();
+				await CheckMenagerie2();
+				await CheckVHBosses2();
+				await CheckDailyReset2();
+				await CheckWowToken2();
+				await CheckWorldBosses2();
+				await CheckWorldEvents2();
+				await CheckXurios2();
+				await CheckAffixes2();
+				await CheckInvasions2();
+				await CheckBrokenShoreBuildings2();
+
+				log.Debug("Checking complete!");
+				log.Debug("Start sending auto alerts");
+
+				m_dbConnection.Open();
+
+				sql = "SELECT tablename FROM tablestoalert";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader readtablenames = command.ExecuteReader();
+
+				while (readtablenames.Read())
+				{
+					tablenames.Add(readtablenames["tablename"].ToString());
+					//Console.WriteLine(readtablenames["tablename"]);
+				}
+
+				sql = "SELECT value, guildid, channelid FROM autoalerts WHERE value = 'true'";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader reader = command.ExecuteReader();
+
+				while (reader.Read())
+				{
+					Console.WriteLine("READ!");
+					log.Debug("Reading which guilds and channels to send alerts to from DB");
+					foreach (string table in tablenames)
+					{
+						log.Debug("There was a change in the " + table + " table - alerting!");
+						await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync("There was a change in " + table);
+					}
+				}
+
+				log.Debug("Alerts completed! Cleaning up...");
+
+				sql = "DELETE FROM tablestoalert";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				command.ExecuteNonQuery();
+
+				m_dbConnection.Close();
+			}
+		}
+
+#region Old Check Methods
 		public async Task CheckEmissaries()
 		{
 			//util.DownloadNewWowHead();
@@ -299,145 +424,6 @@ namespace STWBot_2
 			m_dbConnection.Close();
 		}
 
-
-		public async Task CheckWowhead()
-		{
-			util.DownloadNewWowHead();
-
-			//await AddToDB();
-		}
-
-
-
-		private Task UserJoined(SocketGuildUser user)
-		{
-			IRole membersRole = client.GetGuild(303997236482801670).GetRole(305921894513770499);
-			IRole pugsRole = client.GetGuild(303997236482801670).GetRole(306107573277425664);
-
-			Console.WriteLine(user.Id);
-
-			//SocketUser newUser = client.GetUser(user.Id).;
-			//client.GetGuild().GetVoiceChannel().Users.
-
-			//if (newUser..VoiceChannel.Id == client.GetChannel(306107185145053194).Id)
-			//{
-			Console.WriteLine("PUG!");
-			user.AddRoleAsync(pugsRole);
-			//}
-			//else
-			//{
-			Console.WriteLine("MEMBER!");
-			user.AddRoleAsync(membersRole);
-			//}
-
-			return Task.FromResult(true);
-		}
-
-		private Task Log(LogMessage msg)
-		{
-			Console.WriteLine(msg.ToString());
-			return Task.FromResult(false);
-		}
-
-
-		private Task JoinedNewGuild(SocketGuild guild)
-		{
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			sql = "INSERT INTO autoalerts (value, guildid) VALUES ('false', '" + guild.Id + "')";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			return null;
-		}
-
-
-		private Task LeftGuild(SocketGuild guild)
-		{
-			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-			m_dbConnection.Open();
-
-			string sql;
-			SQLiteCommand command;
-
-			sql = "DELETE FROM autoalerts WHERE guildid = '" + guild.Id + "'";
-			command = new SQLiteCommand(sql, m_dbConnection);
-			command.ExecuteNonQuery();
-
-			return null;
-		}
-
-		public async void TimerElapsed(object sender, ElapsedEventArgs e)
-		{
-			if (client.ConnectionState == ConnectionState.Connected)
-			{
-				//Console.WriteLine("FIRED!");
-				log.Debug("Timer has elapsed - firing checks");
-				m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
-				m_dbConnection.Open();
-
-				string sql;
-				SQLiteCommand command;
-
-				List<string> tablenames = new List<string>();
-
-				m_dbConnection.Close();
-
-				await CheckWowhead();
-
-				await CheckBrokenShoreBuildings();
-				await CheckInvasions();
-				await CheckEmissaries();
-				await CheckMenagerie();
-				await CheckAffixes();
-				await CheckVHBosses();
-				await CheckWorldBosses();
-				await CheckWorldEvents();
-				await CheckXurios();
-				await CheckDailyReset();
-				await CheckWowToken();
-
-				log.Debug("Checking complete!");
-				log.Debug("Start sending auto alerts");
-
-				sql = "SELECT tablename FROM tablestoalert";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				SQLiteDataReader readtablenames = command.ExecuteReader();
-
-				while (readtablenames.Read())
-				{
-					tablenames.Add(readtablenames["tablename"].ToString());
-					//Console.WriteLine(readtablenames["tablename"]);
-				}
-
-				sql = "SELECT value, guildid, channelid FROM autoalerts WHERE value = 'true'";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				SQLiteDataReader reader = command.ExecuteReader();
-
-				while (reader.Read())
-				{
-					Console.WriteLine("READ!");
-					log.Debug("Reading which guilds and channels to send alerts to from DB");
-					foreach (string table in tablenames)
-					{
-						log.Debug("There was a change in the " + table + " table - alerting!");
-						await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync("There was a change in " + table);
-					}
-				}
-
-				log.Debug("Alerts completed! Cleaning up...");
-
-				sql = "DELETE FROM tablestoalert";
-				command = new SQLiteCommand(sql, m_dbConnection);
-				command.ExecuteNonQuery();
-			}
-		}
-
-
 		public async Task CheckMenagerie()
 		{
 			//Utilities util = new Utilities();
@@ -517,7 +503,6 @@ namespace STWBot_2
 			//await Context.Channel.SendMessageAsync(msg);
 		}
 
-
 		public async Task CheckVHBosses()
 		{
 			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
@@ -583,7 +568,6 @@ namespace STWBot_2
 
 			m_dbConnection.Close();
 		}
-
 
 		public async Task CheckDailyReset()
 		{
@@ -673,7 +657,6 @@ namespace STWBot_2
 			//await Context.Channel.SendMessageAsync(msg);
 		}
 
-
 		public async Task CheckWowToken()
 		{
 			//Utilities util = new Utilities();
@@ -709,7 +692,6 @@ namespace STWBot_2
 
 			//await Context.Channel.SendMessageAsync(msg);
 		}
-
 
 		public async Task CheckWorldBosses()
 		{
@@ -780,7 +762,6 @@ namespace STWBot_2
 			//await Context.Channel.SendMessageAsync(msg);
 		}
 
-
 		public async Task CheckWorldEvents()
 		{
 			//Utilities util = new Utilities();
@@ -850,7 +831,6 @@ namespace STWBot_2
 			//await Context.Channel.SendMessageAsync(msg);
 		}
 
-
 		public async Task CheckXurios()
 		{
 			//Utilities util = new Utilities();
@@ -918,7 +898,6 @@ namespace STWBot_2
 				j++;
 			}
 		}
-
 
 		public async Task CheckAffixes()
 		{
@@ -1007,7 +986,6 @@ namespace STWBot_2
 			//msg = "This week's Mythic+ Dungeon Affixes are:\n\n**" + mythicAffixes[0] + "** - Mythic Keystone Level 4+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[0] + ">\n\n**" + mythicAffixes[1]; //+ "** - Mythic Keystone Level 7+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[1] + ">\n\n**" + mythicAffixes[2] + "** - Mythic Keystone Level 10+\nMore Info: <http://www.wowhead.com/affix=" + affixNumbers[2] + ">";
 			//await Context.Channel.SendMessageAsync(msg);
 		}
-
 
 		public async Task CheckInvasions()
 		{
@@ -1201,7 +1179,6 @@ namespace STWBot_2
 			}
 
 		}
-
 
 		public async Task CheckBrokenShoreBuildings()
 		{
@@ -1506,6 +1483,35 @@ namespace STWBot_2
 			m_dbConnection.Close();
 		}
 
+		public void UpdateDBRecord(string columnOne, string valueOne, string columnTwo = null, string valueTwo = null, string columnThree = null, string valueThree = null, string whereColumn = null, string whereValue = null, string table = null)
+		{
+			m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			string setValues = columnOne + " = '" + valueOne + "'";
+
+			if (columnTwo != null)
+			{
+				setValues += ", " + columnTwo + " = '" + valueTwo + "'";
+			}
+
+			if (columnThree != null)
+			{
+				setValues += ", " + columnThree + " = '" + valueThree + "'";
+			}
+		
+
+			sql = "UPDATE " + table + " SET " + setValues + " WHERE " + whereColumn + " = " + whereValue;
+
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+		}
+
 		public async Task CheckEmissaries2()
 		{
 			List<string> dbEmissariesList = GetDBResults("name", "emissaries");
@@ -1549,7 +1555,6 @@ namespace STWBot_2
 			}
 		}
 
-
 		public async Task CheckMenagerie2()
 		{
 			List<string> dbPetNameList = GetDBResults("petname", "menagerie");
@@ -1590,175 +1595,297 @@ namespace STWBot_2
 			int i = 0;
 			foreach (string boss in vhBosses)
 			{
-				if (boss != "No results found...")
-				{
-					string[] words = boss.Split('>');
-					vhBosses[i] = words[1].Replace("</a", "");
-
-					sql = "INSERT INTO vhbosses (bossname) VALUES ('" + vhBosses[i].Replace("'", "''") + "')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
-
-					i++;
-				}
+				InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "vhbosses");
+				i++;
 			}
 
-			//msg = "Current bosses active in the Violet Hold this week are:\n\n**" + vhBosses[0] + "**\n\n**" + vhBosses[1] + "**\n\n**" + vhBosses[2] + "**";
-
-			//await Context.Channel.SendMessageAsync(msg);
-
 			int j = 0;
-
 			foreach (string boss in dbVhBossesList)
 			{
 				if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
 				{
-					sql = "INSERT INTO tablestoalert (tablename) VALUES ('vhbosses')";
-					command = new SQLiteCommand(sql, m_dbConnection);
-					command.ExecuteNonQuery();
+					InsertToDB("tablename", "vhbosses", null, null, null, null, "tablestoalert");
 					break;
 				}
 				j++;
 			}
-
-			m_dbConnection.Close();
 		}
 
-		/* Moved to CommandModules
-		public Task CheckInvasionTimes()
+		public async Task CheckDailyReset2()
 		{
-			WebClient webClient = new WebClient();
-			string htmlCode = webClient.DownloadString("http://wowhead.com");
-			System.IO.File.WriteAllText(@"test.txt", htmlCode);
-			string legionAssaultsLine = GetLine("<script>$WH.news.addInvasionDisplay(\"US\", {\"id\":\"legion-assaults\"", "test.txt");
-
-			char[] charArray = legionAssaultsLine.ToCharArray();
-
-			string cleanLegionAssaults = "";
-
-			int i = 0;
-
-			while (charArray[i].ToString() == " ")
-			{
-				i++;
-			}
-
-			for (int j = i; j < charArray.Count(); j++)
-			{
-				cleanLegionAssaults += charArray[j].ToString();
-			}
-
-			Console.WriteLine(cleanLegionAssaults);
-
-			string[] words = cleanLegionAssaults.Split(',');
-
-			foreach (string word in words)
-			{
-				//Console.WriteLine(word);
-			}
-
-			//string name = words[2].Remove(0, 7);
-			//string url = words[3];
-			string zoneName = words[5].Remove(0, 11).Trim('"');
-			long[] upcomingTimesEpoch = { Convert.ToInt64(words[6].Remove(0, 12)), Convert.ToInt64(words[7]), Convert.ToInt64(words[8]), Convert.ToInt64(words[9]), Convert.ToInt64(words[10].Trim(']')) };
-
-			//char[] trimChars = { '}', ')', ';', '<', '/', 's', 'c', 'r', 'i', 'p', 't' };
-
-			int length = Convert.ToInt32(words[11].Remove(0, 9).Remove(5, 12));
-			//string cleanLength = length.TrimEnd(trimChars);
-
-			//Console.WriteLine(upcomingTimesEpoch[4]);
+			List<string> dbDailyResetList = GetDBResults("time", "dailyreset");
 
 			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 
-			Console.WriteLine(length);
+			DBDropTable("dailyreset");
+
+			string dailyReset = "";
+			string dailyResetEpochTime = GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp").FirstOrDefault();
+
+			long epochTimeLeft = 0;
+
+			epochTimeLeft = Convert.ToInt64(dailyResetEpochTime) - epochTimeNow;
+
+			dailyReset = util.ConvertUnixEpochTime(Convert.ToInt64(dailyResetEpochTime)).ToString();
+
+			string timeNow = util.ConvertUnixEpochTime(epochTimeNow).ToString();
+
+			TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+			string hoursLeft = t.ToString(@"hh");
+			string minutesLeft = t.ToString(@"mm").TrimStart('0');
+			if (hoursLeft != "00")
+			{
+				hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+			}
+			else
+			{
+				hoursLeft = "";
+			}
+
+			InsertToDB("time", dailyResetEpochTime, "timeleft", hoursLeft + minutesLeft + " minutes", null, null, "dailyreset");
+
+			if (dbDailyResetList[0] != dailyResetEpochTime)
+			{
+				InsertToDB("tablename", "dailyreset", null, null, null, null, "tablestoalert");
+			}
+		}
+
+		public async Task CheckWowToken2()
+		{
+			string tokenGold = GetInnerText("//span[contains(@class,'moneygold')]", 1).FirstOrDefault();
+
+			DBDropTable("wowtoken");
+
+			InsertToDB("price", tokenGold, null, null, null, null, "wowtoken");
+		}
+
+		public async Task CheckWorldBosses2()
+		{
+			List<string> dbWorldBossesList = GetDBResults("bossname", "worldbosses");
+
+			List<string> bosses = GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
+
+			string[] bossesArray = bosses.ToArray();
+
+			DBDropTable("worldbosses");
+
+			int i = 0;
+			foreach (string boss in bossesArray)
+			{
+				InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "worldbosses");
+				i++;
+			}
+
+			int j = 0;
+			foreach (string bossname in dbWorldBossesList)
+			{
+				if (bossname != bossesArray[j] || dbWorldBossesList.Count != bossesArray.Length)
+				{
+					InsertToDB("tablename", "worldbosses", null, null, null, null, "tablestoalert");
+					break;
+				}
+				j++;
+			}
+		}
+
+		public async Task CheckWorldEvents2()
+		{
+			List<string> dbWorldEvents = GetDBResults("eventname", "worldevents");
+			List<string> worldEvents = GetInnerText("//a[contains(@id,'US-holiday-')]");;
+			string[] worldEventsArray = worldEvents.ToArray();
+
+			DBDropTable("worldevents");
+
+			int i = 0;
+			foreach (string worldEvent in worldEventsArray)
+			{
+				InsertToDB("eventname", worldEvent.Replace("'", "''"), null, null, null, null, "worldevents");
+				i++;
+			}
+
+			int j = 0;
+			foreach (string worldevent in dbWorldEvents)
+			{
+				if (worldevent != worldEventsArray[j] || dbWorldEvents.Count != worldEventsArray.Length)
+				{
+					InsertToDB("tablename", "worldevents", null, null, null, null, "tablestoalert");
+					break;
+				}
+				j++;
+			}
+		}
+
+		public async Task CheckXurios2()
+		{
+			List<string> dbXurios = GetDBResults("itemname", "xurios");
+			List<string> xurios = GetInnerText("//a[contains(@id,'US-xurios-')]");
+			string[] xuriosArray = xurios.ToArray();
+
+			DBDropTable("xurios");
+
+			int i = 0;
+			foreach (string item in xuriosArray)
+			{
+				InsertToDB("itemname", item.Replace("'", "''"), null, null, null, null, "xurios");
+				i++;
+			}
+
+			int j = 0;
+			foreach (string item in dbXurios)
+			{
+				if (item != xuriosArray[j] || dbXurios.Count != xuriosArray.Length)
+				{
+					InsertToDB("tablename", "xurios", null, null, null, null, "tablestoalert");
+					break;
+				}
+				j++;
+			}
+		}
+
+		public async Task CheckAffixes2()
+		{
+			List<string> dbAffixes = GetDBResults("affixname", "dungeonaffixes");
+			List<string> mythicAffixesList = GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
+			string[] mythicAffixes = mythicAffixesList.ToArray();
+
+			string[] affixNumbers = GetAttributeValue("//a[contains(@id,'US-mythicaffix-')]", "href").ToArray();
+
+			DBDropTable("dungeonaffixes");
+
+			int i = 0;
+			int j = 1;
+			foreach (string affix in mythicAffixes)
+			{
+				j += 3;
+				InsertToDB("affixname", affix, "affixnum", affixNumbers[i].Replace("/affix=", ""), "dungeonlevel", j.ToString(), "dungeonaffixes");
+				i++;
+			}
+
+			int k = 0;
+			foreach (string affix in dbAffixes)
+			{
+				if (affix != mythicAffixes[k] || dbAffixes.Count != mythicAffixes.Length)
+				{
+					InsertToDB("tablename", "dungeonaffixes", null, null, null, null, "tablestoalert");
+					break;
+				}
+				k++;
+			}
+		}
+
+		public async Task CheckInvasions2()
+		{
+			List<string> dbAssaults = GetDBResults("zonename", "legionassaults");
+			string legionAssaultsLine = GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]").FirstOrDefault();
+
+			string[] words = legionAssaultsLine.Split(':');
+
+			string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
+			int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});", ""));
+			log.Debug(length);
+			string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
+
+			List<long> upcomingTimesEpoch = new List<long>();
+
+			int i = 0;
+			foreach (string time in upcomingAssaultsStr)
+			{
+				upcomingTimesEpoch.Add(Convert.ToInt64(time));
+			}
+
+			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+			DBDropTable("legionassaults");
+
+			string hoursLeft = "";
+			string minutesLeft = "";
+			string zone = "";
 
 			foreach (long epochTime in upcomingTimesEpoch)
 			{
+				InsertToDB("assaulttime", epochTime.ToString(), "timeleft", hoursLeft + minutesLeft, "length", length.ToString(), "legionassaults");
+			}
+
+			int j = 1;
+			foreach (long epochTime in upcomingTimesEpoch)
+			{
 				long tempEpochTime = epochTime + (length);
-				//Console.WriteLine(tempEpochTime);
+
 				if (epochTimeNow < tempEpochTime)
 				{
 					if (epochTimeNow > epochTime)
 					{
-						long epochTimeLeft = (tempEpochTime - epochTimeNow);
-						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-						string hoursLeft = t.ToString(@"hh").TrimStart('0'); 
-						string minutesLeft = t.ToString(@"mm").TrimStart('0');
-						string zone = "";
-						if (zoneName != "")
+						if (zoneName != "" || zoneName != "null")
 						{
 							zone = zoneName;
 						}
-						else 
+						else
 						{
 							zone = "A zone";
 						}
-						Console.WriteLine(zone + " is being assaulted by the legion! " + hoursLeft + " hours and " + minutesLeft + " minutes remaining...");
-					}
-					else
-					{
-						Console.WriteLine(ConvertUnixEpochTime(epochTime));
+						long epochTimeLeft = (tempEpochTime - epochTimeNow);
+						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+						hoursLeft = t.ToString(@"hh");
+						minutesLeft = t.ToString(@"mm").TrimStart('0');
+						if (hoursLeft != "00")
+						{
+							hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+						}
+						else
+						{
+							hoursLeft = "";
+						}
 					}
 				}
-				//Console.WriteLine(epochTime);
-			}
-
-			//System.IO.File.WriteAllText(@"test.txt", htmlCode);
-
-			//Console.WriteLine(htmlCode);
-			/* Need updated chromium/chromedriver.exe
-			 * IWebDriver driver = new ChromeDriver(@"C:\Users\Kurt\AppData\Local\Google\Chrome SxS\Application");
-			driver.Navigate().GoToUrl("https://wowhead.com");
-
-			return Task.FromResult(false);
-		}
-		*/
-		/*
-		DateTime ConvertUnixEpochTime(long seconds)
-		{
-			long convertedSeconds = Convert.ToInt64(seconds);
-			DateTime time = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-			return time.AddSeconds(seconds).ToLocalTime();
-		}
-
-		string GetLine(string keyword, string file)
-		{
-			string[] textLines = File.ReadAllLines(file);
-			List<string> results = new List<string>();
-
-			foreach (string line in textLines)
-			{
-				if (line.Contains(keyword))
+				if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
 				{
-					results.Add(line);
-					return line;
+					UpdateDBRecord("zonename", zone.Replace("'", "''"), "timeleft", hoursLeft + minutesLeft, null, null, "id", j.ToString(), "legionassaults");
 				}
+				j++;
 			}
 
-			/*
-			foreach (string l in results)
+			int k = 0;
+			foreach (string name in dbAssaults)
 			{
-				//Console.WriteLine(l);
-				return l;
+				if (!string.IsNullOrEmpty(name) && name != zoneName)
+				{
+					InsertToDB("tablename", "legionassaults", null, null, null, null, "tablestoalert");
+				}
+				k++;
+			}
+		}
+
+		public async Task CheckBrokenShoreBuildings2()
+		{
+			List<string> dbBrokenShore = GetDBResults("buildingstate", "brokenshorebuildings");
+
+			string[] buildingNames = GetInnerText("//div[contains(@data-region,'US')]/../../div/a").ToArray();
+			string[] buildingProgress = GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title").ToArray();
+			string[] buildingStates = GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]").ToArray();
+
+			GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
+			GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
+			GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
+
+			DBDropTable("brokenshorebuildings");
+
+			int i = 0;
+			foreach (string building in buildingNames)
+			{
+				InsertToDB("buildingname", buildingNames[i], "buildingstate", buildingStates[i], "buildingpercentage", buildingProgress[i], "brokenshorebuildings"); 
+				i++;
 			}
 
-			//if (results.Count < 1)
-			return "No invasions found...";
-
+			int k = 0;
+			foreach (string state in dbBrokenShore)
+			{
+				if (state != buildingStates[k])
+				{
+					InsertToDB("tablename", "brokenshorebuildings", null, null, null, null, "tablestoalert");
+					break;
+				}
+				k++;
+			}
 		}
-		*/
-
-		/*
-		string GetLine(string text, int lineNo)
-		{
-			string[] lines = text.Replace("\r", "").Split('\n');
-			return lines.Length >= lineNo ? lines[lineNo - 1] : null;
-		}
-		*/
-
-
-
 	}
 }
