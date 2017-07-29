@@ -31,6 +31,7 @@ namespace STWBot_2
 		public static MainClass instance = null;
 		private int checkTimerInit = 600000; //600000 = 10mins
 		private int checkTimer = 0;
+		private Timer t = new Timer();
 #endregion
 
 #region Inital Startup / Main
@@ -85,26 +86,7 @@ namespace STWBot_2
 			await InstallCommands();
 			await ConnectToDB();
 
-			try
-			{
-				checkTimer = checkTimerInit;
-				await CheckEmissaries();
-				await CheckMenagerie();
-				await CheckVHBosses();
-				await CheckDailyReset();
-				await CheckWowToken();
-				await CheckWorldBosses();
-				await CheckWorldEvents();
-				await CheckXurios();
-				await CheckAffixes();
-				await CheckInvasions();
-				await CheckBrokenShoreBuildings();
-			}
-			catch (Exception ex)
-			{
-				log.Fatal($"There was an error trying to check wowhead results (see log above). Exception: {ex}");
-				checkTimer = 60000; //1min
-			}
+			await RunChecks();
 
 			client.Log += Log;
 			client.JoinedGuild += JoinedNewGuild;
@@ -117,7 +99,7 @@ namespace STWBot_2
 
 			client.SetGameAsync("Testing");
 
-			Timer t = new Timer();
+
 			t.Interval = checkTimer; //In milliseconds here //600000
 			t.AutoReset = true; //Stops it from repeating
 			t.Elapsed += new ElapsedEventHandler(TimerElapsed);
@@ -185,6 +167,24 @@ namespace STWBot_2
 				Console.WriteLine("Result = " + reader["test"]);
 
 			m_dbConnection.Close();
+		}
+
+		public async Task RunChecks()
+		{
+			checkTimer = checkTimerInit;
+			t.Interval = checkTimer;
+			log.Debug($"Check timer is set for every {checkTimer} milliseconds");
+			await CheckEmissaries();
+			await CheckMenagerie();
+			await CheckVHBosses();
+			await CheckDailyReset();
+			await CheckWowToken();
+			await CheckWorldBosses();
+			await CheckWorldEvents();
+			await CheckXurios();
+			await CheckAffixes();
+			await CheckInvasions();
+			await CheckBrokenShoreBuildings();
 		}
 
 		public async Task CheckWowhead()
@@ -262,7 +262,6 @@ namespace STWBot_2
 				log.Debug("Timer has elapsed - firing checks");
 				m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;");
 
-
 				string sql;
 				SQLiteCommand command;
 
@@ -270,17 +269,7 @@ namespace STWBot_2
 
 				await CheckWowhead();
 
-				await CheckEmissaries();
-				await CheckMenagerie();
-				await CheckVHBosses();
-				await CheckDailyReset();
-				await CheckWowToken();
-				await CheckWorldBosses();
-				await CheckWorldEvents();
-				await CheckXurios();
-				await CheckAffixes();
-				await CheckInvasions();
-				await CheckBrokenShoreBuildings();
+				await RunChecks();
 
 				log.Debug("Checking complete!");
 				log.Debug("Start sending auto alerts");
@@ -534,388 +523,532 @@ namespace STWBot_2
 #region WoW Head Checks
 		public async Task CheckEmissaries()
 		{
-			log.Debug("Running CheckEmissaries");
-			List<string> dbEmissariesList = GetDBResults("name", "emissaries");
-			List<string> dbTimeLeftList = GetDBResults("timeleft", "emissaries");
-
-			List<string> emissariesList = GetInnerText("//a[contains(@id,'US-emissary-')]");
-			List<string> timeLeftList = GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
-
-			string[] timeLeftArray = timeLeftList.ToArray();
-
-			int i = 0;
-			foreach (string time in timeLeftArray)
+			try
 			{
-				string[] split = time.Split('"');
-				timeLeftArray[i] = split[1].Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
-				log.Debug(timeLeftArray[i]);
-				i++;
-			}
+				log.Debug("Running CheckEmissaries");
+				List<string> dbEmissariesList = GetDBResults("name", "emissaries");
+				List<string> dbTimeLeftList = GetDBResults("timeleft", "emissaries");
 
-			log.Debug("Updating emissaries");
+				List<string> emissariesList = GetInnerText("//a[contains(@id,'US-emissary-')]");
+				List<string> timeLeftList = GetInnerText("//a[contains(@id,'US-emissary-')]/../script");
 
-			DBDropTable("emissaries");
+				if (emissariesList.Count == 0) throw new Exception("No emissaries were returned");
 
-			int j = 0;
-			foreach (string time in timeLeftArray)
-			{
-				log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
-				InsertToDB("name", emissariesList[j], "timeleft", timeLeftArray[j], null, null, "emissaries");
-				j++;
-			}
+				string[] timeLeftArray = timeLeftList.ToArray();
 
-			int k = 0;
-			foreach (string emissary in dbEmissariesList)
-			{
-				if (emissary != emissariesList[k] || dbEmissariesList.Count != emissariesList.Count)
+				int i = 0;
+				foreach (string time in timeLeftArray)
 				{
-					InsertToDB("tablename", "emissaries", null, null, null, null, "tablestoalert");
-					break;
+					string[] split = time.Split('"');
+					timeLeftArray[i] = split[1].Replace("hr", "hours").Replace("min", "minutes").Replace("day", "days");
+					log.Debug(timeLeftArray[i]);
+					i++;
 				}
-				k++;
+
+				log.Debug("Updating emissaries");
+
+				DBDropTable("emissaries");
+
+				int j = 0;
+				foreach (string time in timeLeftArray)
+				{
+					log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
+					InsertToDB("name", emissariesList[j], "timeleft", timeLeftArray[j], null, null, "emissaries");
+					j++;
+				}
+
+				int k = 0;
+				foreach (string emissary in dbEmissariesList)
+				{
+					if (emissary != emissariesList[k] || dbEmissariesList.Count != emissariesList.Count)
+					{
+						InsertToDB("tablename", "emissaries", null, null, null, null, "tablestoalert");
+						break;
+					}
+					k++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Emissaries from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckMenagerie()
 		{
-			log.Debug("Running CheckMenagerie");
-			List<string> dbPetNameList = GetDBResults("petname", "menagerie");
-			List<string> petsList = GetInnerText("//a[contains(@id,'US-menagerie-')]");
-
-			string[] pets = petsList.ToArray();
-
-			DBDropTable("menagerie");
-
-			int i = 0;
-			foreach (string pet in pets)
+			try
 			{
-				//log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
-				InsertToDB("petname", pets[i], null, null, null, null, "menagerie");
-				i++;
-			}
+				log.Debug("Running CheckMenagerie");
+				List<string> dbPetNameList = GetDBResults("petname", "menagerie");
+				List<string> petsList = GetInnerText("//a[contains(@id,'US-menagerie-')]");
 
-			int j = 0;
-			foreach (string petname in dbPetNameList)
-			{
-				if (petname != pets[j] || dbPetNameList.Count != pets.Length)
+				if (petsList.Count == 0) throw new Exception("No pets were returned");
+
+				string[] pets = petsList.ToArray();
+
+				DBDropTable("menagerie");
+
+				int i = 0;
+				foreach (string pet in pets)
 				{
-					InsertToDB("tablename", "menagerie", null, null, null, null, "tablestoalert");
-					break;
+					//log.Debug($"{emissariesList[j]} - {timeLeftArray[j]}");
+					InsertToDB("petname", pets[i], null, null, null, null, "menagerie");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string petname in dbPetNameList)
+				{
+					if (petname != pets[j] || dbPetNameList.Count != pets.Length)
+					{
+						InsertToDB("tablename", "menagerie", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Menagerie from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckVHBosses()
 		{
-			log.Debug("Running CheckVHBosses");
-			List<string> dbVhBossesList = GetDBResults("bossname", "vhbosses");
-			List<string> vhBossesList = GetInnerText("//a[contains(@id,'US-violethold-')]");
-			string[] vhBosses = vhBossesList.ToArray();
-
-			DBDropTable("vhbosses");
-
-			int i = 0;
-			foreach (string boss in vhBosses)
+			try
 			{
-				InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "vhbosses");
-				i++;
-			}
+				log.Debug("Running CheckVHBosses");
+				List<string> dbVhBossesList = GetDBResults("bossname", "vhbosses");
+				List<string> vhBossesList = GetInnerText("//a[contains(@id,'US-violethold-')]");
+				string[] vhBosses = vhBossesList.ToArray();
 
-			int j = 0;
-			foreach (string boss in dbVhBossesList)
-			{
-				if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
+				if (vhBossesList.Count == 0) throw new Exception("No Violet Hold bosses were returned");
+
+				DBDropTable("vhbosses");
+
+				int i = 0;
+				foreach (string boss in vhBosses)
 				{
-					InsertToDB("tablename", "vhbosses", null, null, null, null, "tablestoalert");
-					break;
+					InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "vhbosses");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string boss in dbVhBossesList)
+				{
+					if (boss != vhBosses[j] || dbVhBossesList.Count != vhBosses.Length)
+					{
+						InsertToDB("tablename", "vhbosses", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Violet Hold Bosses from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckDailyReset()
 		{
-			log.Debug("Running CheckDailyReset");
-			List<string> dbDailyResetList = GetDBResults("time", "dailyreset");
-
-			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-
-			DBDropTable("dailyreset");
-
-			string dailyReset = "";
-			string dailyResetEpochTime = GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp").FirstOrDefault();
-
-			long epochTimeLeft = 0;
-
-			epochTimeLeft = Convert.ToInt64(dailyResetEpochTime) - epochTimeNow;
-
-			dailyReset = util.ConvertUnixEpochTime(Convert.ToInt64(dailyResetEpochTime)).ToString();
-
-			string timeNow = util.ConvertUnixEpochTime(epochTimeNow).ToString();
-
-			TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-			string hoursLeft = t.ToString(@"hh");
-			string minutesLeft = t.ToString(@"mm").TrimStart('0');
-			if (hoursLeft != "00")
+			try
 			{
-				hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+				log.Debug("Running CheckDailyReset");
+				List<string> dbDailyResetList = GetDBResults("time", "dailyreset");
+				List<string> dailyResetList = GetAttributeValue("//div[contains(@id,'tiw-timer-US')]", "data-timestamp");
+
+				if (dailyResetList.Count == 0) throw new Exception("No daily reset times were returned");
+
+				long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+				DBDropTable("dailyreset");
+
+				string dailyReset = "";
+				string dailyResetEpochTime = dailyResetList.FirstOrDefault();
+
+				long epochTimeLeft = 0;
+
+				epochTimeLeft = Convert.ToInt64(dailyResetEpochTime) - epochTimeNow;
+
+				dailyReset = util.ConvertUnixEpochTime(Convert.ToInt64(dailyResetEpochTime)).ToString();
+
+				string timeNow = util.ConvertUnixEpochTime(epochTimeNow).ToString();
+
+				TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+				string hoursLeft = t.ToString(@"hh");
+				string minutesLeft = t.ToString(@"mm").TrimStart('0');
+				if (hoursLeft != "00")
+				{
+					hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+				}
+				else
+				{
+					hoursLeft = "";
+				}
+
+				InsertToDB("time", dailyResetEpochTime, "timeleft", hoursLeft + minutesLeft + " minutes", null, null, "dailyreset");
+
+				if (dbDailyResetList[0] != dailyResetEpochTime)
+				{
+					InsertToDB("tablename", "dailyreset", null, null, null, null, "tablestoalert");
+				}
 			}
-			else
+			catch(Exception ex)
 			{
-				hoursLeft = "";
-			}
-
-			InsertToDB("time", dailyResetEpochTime, "timeleft", hoursLeft + minutesLeft + " minutes", null, null, "dailyreset");
-
-			if (dbDailyResetList[0] != dailyResetEpochTime)
-			{
-				InsertToDB("tablename", "dailyreset", null, null, null, null, "tablestoalert");
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Daily Reset from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckWowToken()
 		{
-			log.Debug("Running CheckWowToken");
-			string tokenGold = GetInnerText("//span[contains(@class,'moneygold')]", 1).FirstOrDefault();
+			try
+			{
+				log.Debug("Running CheckWowToken");
+				List<string> tokenGoldList = GetInnerText("//span[contains(@class,'moneygold')]", 1);
+				string tokenGold = tokenGoldList.FirstOrDefault();
 
-			DBDropTable("wowtoken");
+				if (tokenGoldList.Count == 0) throw new Exception("No WoW token prices were returned");
 
-			InsertToDB("price", tokenGold, null, null, null, null, "wowtoken");
+				DBDropTable("wowtoken");
+
+				InsertToDB("price", tokenGold, null, null, null, null, "wowtoken");
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check WoW Tokens from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
+			}
 		}
 
 		public async Task CheckWorldBosses()
 		{
-			log.Debug("Running CheckWorldBosses");
-			List<string> dbWorldBossesList = GetDBResults("bossname", "worldbosses");
-
-			List<string> bosses = GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
-
-			string[] bossesArray = bosses.ToArray();
-
-			DBDropTable("worldbosses");
-
-			int i = 0;
-			foreach (string boss in bossesArray)
+			try
 			{
-				InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "worldbosses");
-				i++;
-			}
+				log.Debug("Running CheckWorldBosses");
+				List<string> dbWorldBossesList = GetDBResults("bossname", "worldbosses");
+				List<string> bosses = GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
+				string[] bossesArray = bosses.ToArray();
 
-			int j = 0;
-			foreach (string bossname in dbWorldBossesList)
-			{
-				if (bossname != bossesArray[j] || dbWorldBossesList.Count != bossesArray.Length)
+				if (bosses.Count == 0) throw new Exception("No World Bosses were returned");
+
+				DBDropTable("worldbosses");
+
+				int i = 0;
+				foreach (string boss in bossesArray)
 				{
-					InsertToDB("tablename", "worldbosses", null, null, null, null, "tablestoalert");
-					break;
+					InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "worldbosses");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string bossname in dbWorldBossesList)
+				{
+					if (bossname != bossesArray[j] || dbWorldBossesList.Count != bossesArray.Length)
+					{
+						InsertToDB("tablename", "worldbosses", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check World Bosses from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckWorldEvents()
 		{
-			log.Debug("Running CheckWorldEvents");
-			List<string> dbWorldEvents = GetDBResults("eventname", "worldevents");
-			List<string> worldEvents = GetInnerText("//a[contains(@id,'US-holiday-')]");;
-			string[] worldEventsArray = worldEvents.ToArray();
-
-			DBDropTable("worldevents");
-
-			int i = 0;
-			foreach (string worldEvent in worldEventsArray)
+			try
 			{
-				InsertToDB("eventname", worldEvent.Replace("'", "''"), null, null, null, null, "worldevents");
-				i++;
-			}
+				log.Debug("Running CheckWorldEvents");
+				List<string> dbWorldEvents = GetDBResults("eventname", "worldevents");
+				List<string> worldEvents = GetInnerText("//a[contains(@id,'US-holiday-')]"); ;
+				string[] worldEventsArray = worldEvents.ToArray();
 
-			int j = 0;
-			foreach (string worldevent in dbWorldEvents)
-			{
-				if (worldevent != worldEventsArray[j] || dbWorldEvents.Count != worldEventsArray.Length)
+				if (worldEvents.Count == 0) throw new Exception("No World Events were returned");
+
+				DBDropTable("worldevents");
+
+				int i = 0;
+				foreach (string worldEvent in worldEventsArray)
 				{
-					InsertToDB("tablename", "worldevents", null, null, null, null, "tablestoalert");
-					break;
+					InsertToDB("eventname", worldEvent.Replace("'", "''"), null, null, null, null, "worldevents");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string worldevent in dbWorldEvents)
+				{
+					if (worldevent != worldEventsArray[j] || dbWorldEvents.Count != worldEventsArray.Length)
+					{
+						InsertToDB("tablename", "worldevents", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check World Events from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckXurios()
 		{
-			log.Debug("Running CheckXurios");
-			List<string> dbXurios = GetDBResults("itemname", "xurios");
-			List<string> xurios = GetInnerText("//a[contains(@id,'US-xurios-')]");
-			string[] xuriosArray = xurios.ToArray();
-
-			DBDropTable("xurios");
-
-			int i = 0;
-			foreach (string item in xuriosArray)
+			try
 			{
-				InsertToDB("itemname", item.Replace("'", "''"), null, null, null, null, "xurios");
-				i++;
-			}
+				log.Debug("Running CheckXurios");
+				List<string> dbXurios = GetDBResults("itemname", "xurios");
+				List<string> xurios = GetInnerText("//a[contains(@id,'US-xurios-')]");
+				string[] xuriosArray = xurios.ToArray();
 
-			int j = 0;
-			foreach (string item in dbXurios)
-			{
-				if (item != xuriosArray[j] || dbXurios.Count != xuriosArray.Length)
+				if (xurios.Count == 0) throw new Exception("No Xurios items were returned");
+
+				DBDropTable("xurios");
+
+				int i = 0;
+				foreach (string item in xuriosArray)
 				{
-					InsertToDB("tablename", "xurios", null, null, null, null, "tablestoalert");
-					break;
+					InsertToDB("itemname", item.Replace("'", "''"), null, null, null, null, "xurios");
+					i++;
 				}
-				j++;
+
+				int j = 0;
+				foreach (string item in dbXurios)
+				{
+					if (item != xuriosArray[j] || dbXurios.Count != xuriosArray.Length)
+					{
+						InsertToDB("tablename", "xurios", null, null, null, null, "tablestoalert");
+						break;
+					}
+					j++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Xur'ios from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckAffixes()
 		{
-			log.Debug("Running CheckAffixes");
-			List<string> dbAffixes = GetDBResults("affixname", "dungeonaffixes");
-			List<string> mythicAffixesList = GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
-			string[] mythicAffixes = mythicAffixesList.ToArray();
-
-			string[] affixNumbers = GetAttributeValue("//a[contains(@id,'US-mythicaffix-')]", "href").ToArray();
-
-			DBDropTable("dungeonaffixes");
-
-			int i = 0;
-			int j = 1;
-			foreach (string affix in mythicAffixes)
+			try
 			{
-				j += 3;
-				InsertToDB("affixname", affix, "affixnum", affixNumbers[i].Replace("/affix=", ""), "dungeonlevel", j.ToString(), "dungeonaffixes");
-				i++;
-			}
+				log.Debug("Running CheckAffixes");
+				List<string> dbAffixes = GetDBResults("affixname", "dungeonaffixes");
+				List<string> mythicAffixesList = GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
+				string[] mythicAffixes = mythicAffixesList.ToArray();
 
-			int k = 0;
-			foreach (string affix in dbAffixes)
-			{
-				if (affix != mythicAffixes[k] || dbAffixes.Count != mythicAffixes.Length)
+				string[] affixNumbers = GetAttributeValue("//a[contains(@id,'US-mythicaffix-')]", "href").ToArray();
+
+				if (mythicAffixesList.Count == 0) throw new Exception("No Mythic+ Affixes were returned");
+
+				DBDropTable("dungeonaffixes");
+
+				int i = 0;
+				int j = 1;
+				foreach (string affix in mythicAffixes)
 				{
-					InsertToDB("tablename", "dungeonaffixes", null, null, null, null, "tablestoalert");
-					break;
+					j += 3;
+					InsertToDB("affixname", affix, "affixnum", affixNumbers[i].Replace("/affix=", ""), "dungeonlevel", j.ToString(), "dungeonaffixes");
+					i++;
 				}
-				k++;
+
+				int k = 0;
+				foreach (string affix in dbAffixes)
+				{
+					if (affix != mythicAffixes[k] || dbAffixes.Count != mythicAffixes.Length)
+					{
+						InsertToDB("tablename", "dungeonaffixes", null, null, null, null, "tablestoalert");
+						break;
+					}
+					k++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Mythic+ Affixes from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckInvasions()
 		{
-			log.Debug("Running CheckInvasions");
-			List<string> dbAssaults = GetDBResults("zonename", "legionassaults");
-			string legionAssaultsLine = GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]").FirstOrDefault();
-
-			string[] words = legionAssaultsLine.Split(':');
-
-			string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
-			int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});", ""));
-			log.Debug(length);
-			string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
-
-			List<long> upcomingTimesEpoch = new List<long>();
-
-			int i = 0;
-			foreach (string time in upcomingAssaultsStr)
+			try
 			{
-				upcomingTimesEpoch.Add(Convert.ToInt64(time));
-			}
+				log.Debug("Running CheckInvasions");
+				List<string> dbAssaults = GetDBResults("zonename", "legionassaults");
+				List<string> legionAssaultsList = GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]");
+				string legionAssaultsLine = legionAssaultsList.FirstOrDefault();
 
-			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+				if (legionAssaultsList.Count == 0) throw new Exception("No Legion Assaults were returned");
 
-			DBDropTable("legionassaults");
+				string[] words = legionAssaultsLine.Split(':');
 
-			string hoursLeft = "";
-			string minutesLeft = "";
-			string zone = "";
+				string[] upcomingAssaultsStr = words[6].TrimStart('[').Replace("],\"length\"", "").Split(',');
+				int length = Convert.ToInt32(words[7].Replace(" ", "").Replace("});", ""));
+				log.Debug(length);
+				string zoneName = words[5].Replace("\"", "").Replace(",upcoming", "");
 
-			foreach (long epochTime in upcomingTimesEpoch)
-			{
-				InsertToDB("assaulttime", epochTime.ToString(), "timeleft", hoursLeft + minutesLeft, "length", length.ToString(), "legionassaults");
-			}
+				List<long> upcomingTimesEpoch = new List<long>();
 
-			int j = 1;
-			foreach (long epochTime in upcomingTimesEpoch)
-			{
-				long tempEpochTime = epochTime + (length);
-
-				if (epochTimeNow < tempEpochTime)
+				int i = 0;
+				foreach (string time in upcomingAssaultsStr)
 				{
-					if (epochTimeNow > epochTime)
+					upcomingTimesEpoch.Add(Convert.ToInt64(time));
+				}
+
+				long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+				DBDropTable("legionassaults");
+
+				string hoursLeft = "";
+				string minutesLeft = "";
+				string zone = "";
+
+				foreach (long epochTime in upcomingTimesEpoch)
+				{
+					InsertToDB("assaulttime", epochTime.ToString(), "timeleft", hoursLeft + minutesLeft, "length", length.ToString(), "legionassaults");
+				}
+
+				int j = 1;
+				foreach (long epochTime in upcomingTimesEpoch)
+				{
+					long tempEpochTime = epochTime + (length);
+
+					if (epochTimeNow < tempEpochTime)
 					{
-						if (zoneName != "" || zoneName != "null")
+						if (epochTimeNow > epochTime)
 						{
-							zone = zoneName;
-						}
-						else
-						{
-							zone = "A zone";
-						}
-						long epochTimeLeft = (tempEpochTime - epochTimeNow);
-						TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
-						hoursLeft = t.ToString(@"hh");
-						minutesLeft = t.ToString(@"mm").TrimStart('0');
-						if (hoursLeft != "00")
-						{
-							hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
-						}
-						else
-						{
-							hoursLeft = "";
+							if (zoneName != "" || zoneName != "null")
+							{
+								zone = zoneName;
+							}
+							else
+							{
+								zone = "A zone";
+							}
+							long epochTimeLeft = (tempEpochTime - epochTimeNow);
+							TimeSpan t = TimeSpan.FromSeconds(epochTimeLeft);
+							hoursLeft = t.ToString(@"hh");
+							minutesLeft = t.ToString(@"mm").TrimStart('0');
+							if (hoursLeft != "00")
+							{
+								hoursLeft = hoursLeft.TrimStart('0') + " hours and ";
+							}
+							else
+							{
+								hoursLeft = "";
+							}
 						}
 					}
+					if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
+					{
+						UpdateDBRecord("zonename", zone.Replace("'", "''"), "timeleft", hoursLeft + minutesLeft, null, null, "id", j.ToString(), "legionassaults");
+					}
+					j++;
 				}
-				if (j < upcomingTimesEpoch.Count && epochTimeNow > epochTime && epochTimeNow < tempEpochTime)
-				{
-					UpdateDBRecord("zonename", zone.Replace("'", "''"), "timeleft", hoursLeft + minutesLeft, null, null, "id", j.ToString(), "legionassaults");
-				}
-				j++;
-			}
 
-			int k = 0;
-			foreach (string name in dbAssaults)
-			{
-				if (!string.IsNullOrEmpty(name) && name != zoneName)
+				int k = 0;
+				foreach (string name in dbAssaults)
 				{
-					InsertToDB("tablename", "legionassaults", null, null, null, null, "tablestoalert");
+					if (!string.IsNullOrEmpty(name) && name != zoneName)
+					{
+						InsertToDB("tablename", "legionassaults", null, null, null, null, "tablestoalert");
+					}
+					k++;
 				}
-				k++;
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Legion Invasions from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 
 		public async Task CheckBrokenShoreBuildings()
 		{
-			log.Debug("Running CheckBrokenShoreBuildings");
-			List<string> dbBrokenShore = GetDBResults("buildingstate", "brokenshorebuildings");
-
-			string[] buildingNames = GetInnerText("//div[contains(@data-region,'US')]/../../div/a").ToArray();
-			string[] buildingProgress = GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title").ToArray();
-			string[] buildingStates = GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]").ToArray();
-
-			GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
-			GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
-			GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
-
-			DBDropTable("brokenshorebuildings");
-
-			int i = 0;
-			foreach (string building in buildingNames)
+			try
 			{
-				InsertToDB("buildingname", buildingNames[i], "buildingstate", buildingStates[i], "buildingpercentage", buildingProgress[i], "brokenshorebuildings"); 
-				i++;
-			}
+				log.Debug("Running CheckBrokenShoreBuildings");
+				List<string> dbBrokenShore = GetDBResults("buildingstate", "brokenshorebuildings");
 
-			int k = 0;
-			foreach (string state in dbBrokenShore)
-			{
-				if (state != buildingStates[k])
+				string[] buildingNames = GetInnerText("//div[contains(@data-region,'US')]/../../div/a").ToArray();
+				string[] buildingProgress = GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title").ToArray();
+				string[] buildingStates = GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]").ToArray();
+
+				GetInnerText("//div[contains(@data-region,'US')]/../../div/a");
+				GetInnerText("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]");
+				GetAttributeValue("//div[contains(@data-region,'US')]/../..//div/div[contains(@class, 'tiw-bs-status-state')]/../div[contains(@class, 'tiw-bs-status-progress')]/span", "title");
+
+				if (buildingNames.Length == 0) throw new Exception("No Broken Shore Buildings were returned");
+
+				DBDropTable("brokenshorebuildings");
+
+				int i = 0;
+				foreach (string building in buildingNames)
 				{
-					InsertToDB("tablename", "brokenshorebuildings", null, null, null, null, "tablestoalert");
-					break;
+					InsertToDB("buildingname", buildingNames[i], "buildingstate", buildingStates[i], "buildingpercentage", buildingProgress[i], "brokenshorebuildings");
+					i++;
 				}
-				k++;
+
+				int k = 0;
+				foreach (string state in dbBrokenShore)
+				{
+					if (state != buildingStates[k])
+					{
+						InsertToDB("tablename", "brokenshorebuildings", null, null, null, null, "tablestoalert");
+						break;
+					}
+					k++;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("");
+				Console.WriteLine("***----- FAILURE -----***");
+				log.Fatal($"There was an error trying to check Broken Shore Buildings from wowhead. Exception: {ex}");
+				checkTimer = 60000; //1min
+				t.Interval = checkTimer;
 			}
 		}
 #endregion
