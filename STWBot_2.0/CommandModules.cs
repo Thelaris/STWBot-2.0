@@ -596,12 +596,12 @@ namespace STWBot_2
 				k++;
 			}
 
-			Console.WriteLine(emissaries[0]);
-			Console.WriteLine(timeLeft[0]);
-			Console.WriteLine(emissaries[1]);
-			Console.WriteLine(timeLeft[1]);
-			Console.WriteLine(emissaries[2]);
-			Console.WriteLine(timeLeft[2]);
+			//Console.WriteLine(emissaries[0]);
+			//Console.WriteLine(timeLeft[0]);
+			//Console.WriteLine(emissaries[1]);
+			//Console.WriteLine(timeLeft[1]);
+			//Console.WriteLine(emissaries[2]);
+			//Console.WriteLine(timeLeft[2]);
 
 			//msg = "Current active emissaries are:\n\n**" + emissaries[0] + "** - __" + timeLeft[0] + "__ remaining to complete\n\n**" + emissaries[1] + "** - __" + timeLeft[1] + "__ remaining to complete\n\n**" + emissaries[2] + "** - __" + timeLeft[2] + "__ remaining to complete";
 			await Context.Channel.SendMessageAsync(msg);
