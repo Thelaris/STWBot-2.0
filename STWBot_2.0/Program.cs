@@ -29,6 +29,8 @@ namespace STWBot_2
 		private Token tokenRef = new Token();
 		public IServiceProvider map;
 		public static MainClass instance = null;
+		private int checkTimerInit = 600000; //600000 = 10mins
+		private int checkTimer = 0;
 #endregion
 
 #region Inital Startup / Main
@@ -82,17 +84,27 @@ namespace STWBot_2
 
 			await InstallCommands();
 			await ConnectToDB();
-			await CheckEmissaries();
-			await CheckMenagerie();
-			await CheckVHBosses();
-			await CheckDailyReset();
-			await CheckWowToken();
-			await CheckWorldBosses();
-			await CheckWorldEvents();
-			await CheckXurios();
-			await CheckAffixes();
-			await CheckInvasions();
-			await CheckBrokenShoreBuildings();
+
+			try
+			{
+				checkTimer = checkTimerInit;
+				await CheckEmissaries();
+				await CheckMenagerie();
+				await CheckVHBosses();
+				await CheckDailyReset();
+				await CheckWowToken();
+				await CheckWorldBosses();
+				await CheckWorldEvents();
+				await CheckXurios();
+				await CheckAffixes();
+				await CheckInvasions();
+				await CheckBrokenShoreBuildings();
+			}
+			catch (Exception ex)
+			{
+				log.Fatal($"There was an error trying to check wowhead results (see log above). Exception: {ex}");
+				checkTimer = 60000; //1min
+			}
 
 			client.Log += Log;
 			client.JoinedGuild += JoinedNewGuild;
@@ -106,7 +118,7 @@ namespace STWBot_2
 			client.SetGameAsync("Testing");
 
 			Timer t = new Timer();
-			t.Interval = 600000; //In milliseconds here //600000
+			t.Interval = checkTimer; //In milliseconds here //600000
 			t.AutoReset = true; //Stops it from repeating
 			t.Elapsed += new ElapsedEventHandler(TimerElapsed);
 			t.Start();
@@ -522,6 +534,7 @@ namespace STWBot_2
 #region WoW Head Checks
 		public async Task CheckEmissaries()
 		{
+			log.Debug("Running CheckEmissaries");
 			List<string> dbEmissariesList = GetDBResults("name", "emissaries");
 			List<string> dbTimeLeftList = GetDBResults("timeleft", "emissaries");
 
@@ -565,6 +578,7 @@ namespace STWBot_2
 
 		public async Task CheckMenagerie()
 		{
+			log.Debug("Running CheckMenagerie");
 			List<string> dbPetNameList = GetDBResults("petname", "menagerie");
 			List<string> petsList = GetInnerText("//a[contains(@id,'US-menagerie-')]");
 
@@ -594,6 +608,7 @@ namespace STWBot_2
 
 		public async Task CheckVHBosses()
 		{
+			log.Debug("Running CheckVHBosses");
 			List<string> dbVhBossesList = GetDBResults("bossname", "vhbosses");
 			List<string> vhBossesList = GetInnerText("//a[contains(@id,'US-violethold-')]");
 			string[] vhBosses = vhBossesList.ToArray();
@@ -621,6 +636,7 @@ namespace STWBot_2
 
 		public async Task CheckDailyReset()
 		{
+			log.Debug("Running CheckDailyReset");
 			List<string> dbDailyResetList = GetDBResults("time", "dailyreset");
 
 			long epochTimeNow = (long)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
@@ -660,6 +676,7 @@ namespace STWBot_2
 
 		public async Task CheckWowToken()
 		{
+			log.Debug("Running CheckWowToken");
 			string tokenGold = GetInnerText("//span[contains(@class,'moneygold')]", 1).FirstOrDefault();
 
 			DBDropTable("wowtoken");
@@ -669,6 +686,7 @@ namespace STWBot_2
 
 		public async Task CheckWorldBosses()
 		{
+			log.Debug("Running CheckWorldBosses");
 			List<string> dbWorldBossesList = GetDBResults("bossname", "worldbosses");
 
 			List<string> bosses = GetInnerText("//a[contains(@id,'US-epiceliteworld-')]");
@@ -698,6 +716,7 @@ namespace STWBot_2
 
 		public async Task CheckWorldEvents()
 		{
+			log.Debug("Running CheckWorldEvents");
 			List<string> dbWorldEvents = GetDBResults("eventname", "worldevents");
 			List<string> worldEvents = GetInnerText("//a[contains(@id,'US-holiday-')]");;
 			string[] worldEventsArray = worldEvents.ToArray();
@@ -725,6 +744,7 @@ namespace STWBot_2
 
 		public async Task CheckXurios()
 		{
+			log.Debug("Running CheckXurios");
 			List<string> dbXurios = GetDBResults("itemname", "xurios");
 			List<string> xurios = GetInnerText("//a[contains(@id,'US-xurios-')]");
 			string[] xuriosArray = xurios.ToArray();
@@ -752,6 +772,7 @@ namespace STWBot_2
 
 		public async Task CheckAffixes()
 		{
+			log.Debug("Running CheckAffixes");
 			List<string> dbAffixes = GetDBResults("affixname", "dungeonaffixes");
 			List<string> mythicAffixesList = GetInnerText("//a[contains(@id,'US-mythicaffix-')]");
 			string[] mythicAffixes = mythicAffixesList.ToArray();
@@ -783,6 +804,7 @@ namespace STWBot_2
 
 		public async Task CheckInvasions()
 		{
+			log.Debug("Running CheckInvasions");
 			List<string> dbAssaults = GetDBResults("zonename", "legionassaults");
 			string legionAssaultsLine = GetInnerText("//div[contains(@id,'tiw-assault-US')]/../script[contains(.,'legion-assaults')]").FirstOrDefault();
 
@@ -865,6 +887,7 @@ namespace STWBot_2
 
 		public async Task CheckBrokenShoreBuildings()
 		{
+			log.Debug("Running CheckBrokenShoreBuildings");
 			List<string> dbBrokenShore = GetDBResults("buildingstate", "brokenshorebuildings");
 
 			string[] buildingNames = GetInnerText("//div[contains(@data-region,'US')]/../../div/a").ToArray();
