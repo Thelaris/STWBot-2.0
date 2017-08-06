@@ -32,6 +32,8 @@ namespace STWBot_2
 		private int checkTimerInit = 600000; //600000 = 10mins
 		private int checkTimer = 0;
 		private Timer t = new Timer();
+		public bool sendEmail = true;
+
 #endregion
 
 #region Inital Startup / Main
@@ -185,6 +187,18 @@ namespace STWBot_2
 			await CheckAffixes();
 			await CheckInvasions();
 			await CheckBrokenShoreBuildings();
+			if (checkTimer == checkTimerInit)
+			{
+				if (sendEmail == false)
+				{
+					util.SendEmail("Last error has been RESOLVED!", $"Last errors mentioned have since been resolved and STWBOT-2.0 has returned to checking wowhead every {checkTimer} milliseconds...");
+				}
+				sendEmail = true;
+			}
+			else
+			{
+				sendEmail = false;
+			}
 		}
 
 		public async Task CheckWowhead()
@@ -575,6 +589,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Emissaries from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Emissaries failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -618,6 +636,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Menagerie from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Menagerie failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -659,6 +681,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Violet Hold Bosses from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: VHBosses failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -713,6 +739,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Daily Reset from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Daily Reset failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -737,6 +767,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check WoW Tokens from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Wow Token failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -778,6 +812,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check World Bosses from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: World Bosses failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -819,6 +857,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check World Events from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: World Events failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -860,6 +902,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Xur'ios from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Xurios failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -905,6 +951,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Mythic+ Affixes from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Affixes failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -1002,6 +1052,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Legion Invasions from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Invasions failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 
@@ -1049,6 +1103,10 @@ namespace STWBot_2
 				log.Fatal($"There was an error trying to check Broken Shore Buildings from wowhead. Exception: {ex}");
 				checkTimer = 60000; //1min
 				t.Interval = checkTimer;
+				if (sendEmail)
+				{
+					util.SendEmail("ERROR: Broken Shore Buildings failed", $"ERROR: There was an error trying to check Xur'ios from wowhead @ {DateTime.Now}. Exception: {ex}");
+				}
 			}
 		}
 #endregion
