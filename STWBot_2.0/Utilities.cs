@@ -166,7 +166,7 @@ namespace STWBot_2
 			//System.IO.File.WriteAllText(@"magetower.txt", htmlCode);
 		}
 
-		public void SendEmail(string FROM, string TO, string subject, string body)
+		public void SendEmail(string subject, string body)
 		{
 			SQLiteConnection m_dbConnection;
 
