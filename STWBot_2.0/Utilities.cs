@@ -228,5 +228,47 @@ namespace STWBot_2
 			client.Send(mail);
 		}
 
+		public void CompareLists(List<string> listOne, List<string> listTwo, string module)
+		{
+			if (listOne.Count < listTwo.Count)
+			{
+				foreach (string item in listTwo)
+				{
+					if (!listOne.Any(e => e.Equals(item)))
+					{
+						log.Debug($"{item} {module} has just ended!");
+					}
+				}
+			}
+			else if (listOne.Count > listTwo.Count)
+			{
+				foreach (string item in listOne)
+				{
+					if (!listTwo.Any(e => e.Equals(item)))
+					{
+						log.Debug($"{item} {module} has just started!");
+					}
+				}
+			}
+			else if (listOne.Count == listTwo.Count)
+			{
+				foreach (string item in listTwo)
+				{
+					if (!listOne.Any(e => e.Equals(item)))
+					{
+						log.Debug($"{item} {module} has just ended!");
+					}
+				}
+
+				foreach (string item in listOne)
+				{
+					if (!listTwo.Any(e => e.Equals(item)))
+					{
+						log.Debug($"{item} {module} has just started!");
+					}
+				}
+			}
+		}
+
 	}
 }

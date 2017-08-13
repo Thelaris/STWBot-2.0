@@ -444,7 +444,8 @@ namespace STWBot_2
 
 			List<string> dbResults = new List<string>();
 
-			sql = "SELECT " + column + " FROM " + table;
+			sql = $"SELECT {column} FROM {table}";
+
 			command = new SQLiteCommand(sql, m_dbConnection);
 
 			SQLiteDataReader reader = command.ExecuteReader();
@@ -570,6 +571,8 @@ namespace STWBot_2
 					InsertToDB("name", emissariesList[j], "timeleft", timeLeftArray[j], null, null, "emissaries");
 					j++;
 				}
+
+				util.CompareLists(emissariesList, dbEmissariesList, "emissary quest");
 
 				int k = 0;
 				foreach (string emissary in dbEmissariesList)
