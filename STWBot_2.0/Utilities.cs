@@ -275,11 +275,11 @@ namespace STWBot_2
 			{
 				for (int i = 0; i < newList.Count; i++)
 				{
-					if ((newList[i] != null || newList[i] != "") && (dbList[i] == null || dbList[i] == ""))
+					if (!string.IsNullOrEmpty(newList[i]) && string.IsNullOrEmpty(dbList[i]))
 					{
 						log.Debug($"{newList[i]} {module} has just started!");
 					}
-					else if ((dbList[i] != null || dbList[i] != "") && (newList[i] == null || newList[i] == ""))
+					else if (!string.IsNullOrEmpty(dbList[i]) && string.IsNullOrEmpty(newList[i]))
 					{
 						log.Debug($"{dbList[i]} {module} has just ended!");
 					}
