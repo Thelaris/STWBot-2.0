@@ -621,6 +621,8 @@ namespace STWBot_2
 					i++;
 				}
 
+				util.CompareLists(petsList, dbPetNameList, "the Garrison Menagerie pet");
+
 				int j = 0;
 				foreach (string petname in dbPetNameList)
 				{
@@ -665,6 +667,8 @@ namespace STWBot_2
 					InsertToDB("bossname", boss.Replace("'", "''"), null, null, null, null, "vhbosses");
 					i++;
 				}
+
+				util.CompareLists(vhBossesList, dbVhBossesList, "in the Violet Hold");
 
 				int j = 0;
 				foreach (string boss in dbVhBossesList)
@@ -727,6 +731,8 @@ namespace STWBot_2
 				{
 					hoursLeft = "";
 				}
+
+				//util.CompareLists(emissariesList, dbEmissariesList, "emissary quest");
 
 				InsertToDB("time", dailyResetEpochTime, "timeleft", hoursLeft + minutesLeft + " minutes", null, null, "dailyreset");
 
@@ -797,6 +803,8 @@ namespace STWBot_2
 					i++;
 				}
 
+				util.CompareLists(bosses, dbWorldBossesList, "the world boss");
+
 				int j = 0;
 				foreach (string bossname in dbWorldBossesList)
 				{
@@ -842,6 +850,8 @@ namespace STWBot_2
 					i++;
 				}
 
+				util.CompareLists(worldEvents, dbWorldEvents, "world event");
+
 				int j = 0;
 				foreach (string worldevent in dbWorldEvents)
 				{
@@ -886,6 +896,8 @@ namespace STWBot_2
 					InsertToDB("itemname", item.Replace("'", "''"), null, null, null, null, "xurios");
 					i++;
 				}
+
+				util.CompareLists(xurios, dbXurios, "item from Xur'ios");
 
 				int j = 0;
 				foreach (string item in dbXurios)
@@ -935,6 +947,8 @@ namespace STWBot_2
 					InsertToDB("affixname", affix, "affixnum", affixNumbers[i].Replace("/affix=", ""), "dungeonlevel", j.ToString(), "dungeonaffixes");
 					i++;
 				}
+
+				util.CompareLists(mythicAffixesList, dbAffixes, "Mythic+ affix");
 
 				int k = 0;
 				foreach (string affix in dbAffixes)
@@ -1038,6 +1052,12 @@ namespace STWBot_2
 					j++;
 				}
 
+				List<string> zones = new List<string>();
+
+				zones.Add(zone);
+
+				util.CompareLists(zones, dbAssaults, "Legion invasion");
+
 				int k = 0;
 				foreach (string name in dbAssaults)
 				{
@@ -1087,6 +1107,8 @@ namespace STWBot_2
 					InsertToDB("buildingname", buildingNames[i], "buildingstate", buildingStates[i], "buildingpercentage", buildingProgress[i], "brokenshorebuildings");
 					i++;
 				}
+
+				util.CompareLists(buildingStates.ToList(), dbBrokenShore, "Broken Shore building state");
 
 				int k = 0;
 				foreach (string state in dbBrokenShore)

@@ -228,46 +228,78 @@ namespace STWBot_2
 			client.Send(mail);
 		}
 
-		public void CompareLists(List<string> listOne, List<string> listTwo, string module)
+		public void CompareLists(List<string> newList, List<string> dbList, string module)
 		{
-			if (listOne.Count < listTwo.Count)
+			if (module != "Legion invasion" && module != "Broken Shore building state")
 			{
-				foreach (string item in listTwo)
+				if (newList.Count < dbList.Count)
 				{
-					if (!listOne.Any(e => e.Equals(item)))
+					foreach (string item in dbList)
 					{
-						log.Debug($"{item} {module} has just ended!");
+						if (!newList.Any(e => e.Equals(item)))
+						{
+							log.Debug($"{item} {module} has just ended!");
+						}
 					}
 				}
-			}
-			else if (listOne.Count > listTwo.Count)
-			{
-				foreach (string item in listOne)
+				else if (newList.Count > dbList.Count)
 				{
-					if (!listTwo.Any(e => e.Equals(item)))
+					foreach (string item in newList)
 					{
-						log.Debug($"{item} {module} has just started!");
+						if (!dbList.Any(e => e.Equals(item)))
+						{
+							log.Debug($"{item} {module} has just started!");
+						}
 					}
 				}
-			}
-			else if (listOne.Count == listTwo.Count)
-			{
-				foreach (string item in listTwo)
+				else if (newList.Count == dbList.Count)
 				{
-					if (!listOne.Any(e => e.Equals(item)))
+					foreach (string item in dbList)
 					{
-						log.Debug($"{item} {module} has just ended!");
+						if (!newList.Any(e => e.Equals(item)))
+						{
+							log.Debug($"{item} {module} has just ended!");
+						}
 					}
-				}
 
-				foreach (string item in listOne)
-				{
-					if (!listTwo.Any(e => e.Equals(item)))
+					foreach (string item in newList)
 					{
-						log.Debug($"{item} {module} has just started!");
+						if (!dbList.Any(e => e.Equals(item)))
+						{
+							log.Debug($"{item} {module} has just started!");
+						}
 					}
 				}
 			}
+			else if (module == "Legion invasion")
+			{
+				for (int i = 0; i < newList.Count; i++)
+				{
+					if ((newList[i] != null || newList[i] != "") && (dbList[i] == null || dbList[i] == ""))
+					{
+						log.Debug($"{newList[i]} {module} has just started!");
+					}
+					else if ((dbList[i] != null || dbList[i] != "") && (newList[i] == null || newList[i] == ""))
+					{
+						log.Debug($"{dbList[i]} {module} has just ended!");
+					}
+				}
+			}
+			else if (module == "Broken Shore building state")
+			{
+				for (int i = 0; i < newList.Count; i++)
+				{
+					if (newList[i] != dbList[i] && (newList[i] != null || newList[i] != ""))
+					{
+						log.Debug($"{newList[i]} {module} has just started");
+					}
+					else if (dbList[i] != newList[i] && (dbList[i] != null || dbList[i] != ""))
+					{
+						log.Debug($"{dbList[i]} {module} has just ended");
+					}
+				}
+			}
+
 		}
 
 	}
