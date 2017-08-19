@@ -239,6 +239,7 @@ namespace STWBot_2
 						if (!newList.Any(e => e.Equals(item)))
 						{
 							log.Debug($"{item} {module} has just ended!");
+							AddToAlertMessages($"{item} {module} has just ended!");
 						}
 					}
 				}
@@ -249,6 +250,7 @@ namespace STWBot_2
 						if (!dbList.Any(e => e.Equals(item)))
 						{
 							log.Debug($"{item} {module} has just started!");
+							AddToAlertMessages($"{item} {module} has just started!");
 						}
 					}
 				}
@@ -259,6 +261,7 @@ namespace STWBot_2
 						if (!newList.Any(e => e.Equals(item)))
 						{
 							log.Debug($"{item} {module} has just ended!");
+							AddToAlertMessages($"{item} {module} has just ended!");
 						}
 					}
 
@@ -267,21 +270,26 @@ namespace STWBot_2
 						if (!dbList.Any(e => e.Equals(item)))
 						{
 							log.Debug($"{item} {module} has just started!");
+							AddToAlertMessages($"{item} {module} has just started!");
 						}
 					}
 				}
 			}
 			else if (module == "Legion invasion")
 			{
-				for (int i = 0; i < newList.Count; i++)
+				//for (int i = 0; i < newList.Count; i++)
+				foreach (string item in newList)
 				{
-					if (!string.IsNullOrEmpty(newList[i]) && string.IsNullOrEmpty(dbList[i]))
+					//if (!string.IsNullOrEmpty(newList[i]) && string.IsNullOrEmpty(dbList[i]))
+					if (!dbList.Any(e => e.Equals(item)) && !string.IsNullOrEmpty(item))
 					{
-						log.Debug($"{newList[i]} {module} has just started!");
+						log.Debug($"{item} {module} has just started!");
+						AddToAlertMessages($"{item} {module} has just started!");
 					}
-					else if (!string.IsNullOrEmpty(dbList[i]) && string.IsNullOrEmpty(newList[i]))
+					else if (string.IsNullOrEmpty(item) && (dbList.Any(e => !e.Equals(item))))
 					{
-						log.Debug($"{dbList[i]} {module} has just ended!");
+						log.Debug($"{item} {module} has just ended!");
+						AddToAlertMessages($"{item} {module} has just ended!");
 					}
 				}
 			}
@@ -289,18 +297,34 @@ namespace STWBot_2
 			{
 				for (int i = 0; i < newList.Count; i++)
 				{
-					if (newList[i] != dbList[i] && (newList[i] != null || newList[i] != ""))
+					if (newList[i] != dbList[i] && string.IsNullOrEmpty(newList[i]))
 					{
 						log.Debug($"{newList[i]} {module} has just started");
+						AddToAlertMessages($"{newList[i]} {module} has just started");
 					}
-					else if (dbList[i] != newList[i] && (dbList[i] != null || dbList[i] != ""))
+					else if (dbList[i] != newList[i] && string.IsNullOrEmpty(dbList[i]))
 					{
 						log.Debug($"{dbList[i]} {module} has just ended");
+						AddToAlertMessages($"{dbList[i]} {module} has just ended");
 					}
 				}
 			}
-
 		}
 
+		public void AddToAlertMessages(string message)
+		{
+			SQLiteConnection m_dbConnection = new SQLiteConnection(@"Data Source=DB\bot.sqlite;Version=3;"); //Make global
+			m_dbConnection.Open();
+
+			string sql; //make global
+			SQLiteCommand command; //make global
+
+			sql = $"INSERT INTO alertmessages (message) VALUES ('{message}')";
+
+			command = new SQLiteCommand(sql, m_dbConnection);
+			command.ExecuteNonQuery();
+
+			m_dbConnection.Close();
+		}
 	}
 }

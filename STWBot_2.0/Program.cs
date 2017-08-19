@@ -280,6 +280,7 @@ namespace STWBot_2
 				SQLiteCommand command;
 
 				List<string> tablenames = new List<string>();
+				List<string> messagesForAlerts = new List<string>();
 
 				await CheckWowhead();
 
@@ -300,6 +301,15 @@ namespace STWBot_2
 					//Console.WriteLine(readtablenames["tablename"]);
 				}
 
+				sql = "SELECT message FROM alertmessages";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader alertmessages = command.ExecuteReader();
+
+				while (alertmessages.Read())
+				{
+					messagesForAlerts.Add(alertmessages["message"].ToString());
+				}
+
 				sql = "SELECT value, guildid, channelid FROM autoalerts WHERE value = 'true'";
 				command = new SQLiteCommand(sql, m_dbConnection);
 				SQLiteDataReader reader = command.ExecuteReader();
@@ -313,11 +323,20 @@ namespace STWBot_2
 						log.Debug("There was a change in the " + table + " table - alerting!");
 						await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync("There was a change in " + table);
 					}
+
+					foreach (string message in messagesForAlerts)
+					{
+						await client.GetGuild(Convert.ToUInt64(reader["guildid"])).GetTextChannel(Convert.ToUInt64(reader["channelid"])).SendMessageAsync(message);
+					}
 				}
 
 				log.Debug("Alerts completed! Cleaning up...");
 
 				sql = "DELETE FROM tablestoalert";
+				command = new SQLiteCommand(sql, m_dbConnection);
+				command.ExecuteNonQuery();
+
+				sql = "DELETE FROM alertmessages";
 				command = new SQLiteCommand(sql, m_dbConnection);
 				command.ExecuteNonQuery();
 
@@ -897,7 +916,7 @@ namespace STWBot_2
 					i++;
 				}
 
-				util.CompareLists(xurios, dbXurios, "item from Xur'ios");
+				util.CompareLists(xurios, dbXurios, "item from Xur''ios");
 
 				int j = 0;
 				foreach (string item in dbXurios)
