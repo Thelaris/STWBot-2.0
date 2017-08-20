@@ -166,6 +166,12 @@ namespace STWBot_2
 			//System.IO.File.WriteAllText(@"magetower.txt", htmlCode);
 		}
 
+		public string ParseForSQL(string sqlString)
+		{
+			sqlString.Replace("'", "''");
+			return sqlString;
+		}
+
 		public void SendEmail(string subject, string body)
 		{
 			SQLiteConnection m_dbConnection;
@@ -318,6 +324,8 @@ namespace STWBot_2
 
 			string sql; //make global
 			SQLiteCommand command; //make global
+
+			message = ParseForSQL(message);
 
 			sql = $"INSERT INTO alertmessages (message) VALUES ('{message}')";
 
